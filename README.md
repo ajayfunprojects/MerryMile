@@ -39,9 +39,10 @@ These parts behave like the prototype, show sample content, and are clearly labe
 
 You do this once. After that, every push to `main` redeploys automatically.
 
-1. **Sign in** at [cloud.laravel.com](https://cloud.laravel.com) and connect your GitHub account.
-2. **New application** → choose the `ajayfunprojects/MerryMile` repository and the `main` branch
-   (merge this work into `main` first, or pick the branch it is on). Pick a region close to you.
+1. **Sign in** at [cloud.laravel.com](https://cloud.laravel.com). Go to **Account settings → Source control**
+   and connect **GitLab** (the code lives at `gitlab.com/merrymile/Merrymile-Beta`).
+2. **New application** → choose the `merrymile/Merrymile-Beta` project and the `main` branch.
+   Pick a region close to you.
 3. **Add a database:** in the environment, add a **Postgres** database and attach it.
    Laravel Cloud fills in the connection details for you.
 4. **Settings → Deployments.** Set these two boxes exactly:
@@ -104,8 +105,9 @@ chat and exports):
 php artisan test
 ```
 
-They run on SQLite by default. CI (`.github/workflows/tests.yml`) runs them on PostgreSQL 16,
-the same database Laravel Cloud uses.
+They run on SQLite by default. `.github/workflows/tests.yml` runs them on PostgreSQL 16 (the
+database Laravel Cloud uses) when the code is hosted on GitHub; on GitLab it is ignored, so run
+`php artisan test` before pushing.
 
 ### Where things live
 
