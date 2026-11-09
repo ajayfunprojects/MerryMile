@@ -55,8 +55,19 @@ You do this once. After that, every push to `main` redeploys automatically.
      php artisan migrate --force
      ```
 5. **Settings → General:** choose **PHP 8.4** (8.3 also works).
-6. Click **Deploy**. When it finishes, open the `….laravel.cloud` address it shows you.
-7. **Create your account** on the sign-up page, then press **Load the sample trip** to look around.
+6. Click **Deploy** and wait for it to finish.
+7. **Check the app's secret key (`APP_KEY`).** Go to **Settings → Environment variables** and look
+   for `APP_KEY`.
+   - If it is there with a value starting `base64:`, skip to step 8.
+   - If it is missing, open the environment's **Commands** tab and run:
+     ```bash
+     php artisan key:generate --show
+     ```
+     Copy the `base64:…` line it prints. In **Settings → Environment variables**, add a variable
+     named `APP_KEY` with that value, save, and click **Deploy** again. (Until this is set, the
+     site shows an error page.) Never change `APP_KEY` afterwards: everyone would be signed out.
+8. Open the `….laravel.cloud` address Laravel Cloud shows you, **create your account** on the
+   sign-up page, then press **Load the sample trip** to look around.
 
 ### Recommended right after the first deploy
 
@@ -67,7 +78,7 @@ You do this once. After that, every push to `main` redeploys automatically.
   Copy the `base64:…` line it prints into **Settings → Environment variables** as
   `SENSITIVE_DATA_KEY`, then deploy again. Do this before anyone enters a real passport number,
   and never change the key afterwards: data encrypted with the old key could no longer be read.
-  (Until you set it, the app uses Laravel's own `APP_KEY`, which Laravel Cloud creates for you.)
+  (Until you set it, the app falls back to `APP_KEY` from step 7.)
 - **Email.** Invites and password-reset links are only written to the log until you add a mail
   service. With Postmark, set `MAIL_MAILER=postmark`, `POSTMARK_API_KEY`, `MAIL_FROM_ADDRESS` and
   `MAIL_FROM_NAME` in the environment variables. Until then, copy invite links from the trip's
