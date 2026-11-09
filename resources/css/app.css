@@ -194,3 +194,5 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 input[type=date]::-webkit-datetime-edit,input[type=time]::-webkit-datetime-edit{padding:0}
 input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
 .composer input{height:40px}
+/* iPhone Safari zooms the page when a field's text is under 16px; keep phones at 16px. */
+@media (max-width:860px){input,select,textarea{font-size:16px}}
