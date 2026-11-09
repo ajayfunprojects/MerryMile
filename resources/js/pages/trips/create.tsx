@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Shell } from '../../components/layout';
+import { CountryPicker } from '../../components/pickers';
 import { Avs, Chip, Field, Lock, Tile } from '../../components/ui';
 import { COUNTRIES, suggestRoute } from '../../lib/data';
 import { fd, nightsBetween } from '../../lib/util';
@@ -244,9 +245,7 @@ export default function CreateTrip({ roster, tripTypes, interests }: { roster: R
                         <Field id="n-age" label="Age">
                             <input id="n-age" type="number" min="0" max="110" value={nn.age} onChange={(e) => setNn({ ...nn, age: e.target.value })} />
                         </Field>
-                        <Field id="n-nat" label="Nationality (2-letter code)">
-                            <input id="n-nat" maxLength={2} value={nn.nat} onChange={(e) => setNn({ ...nn, nat: e.target.value.toUpperCase() })} />
-                        </Field>
+                        <CountryPicker id="n-nat" label="Nationality" value={nn.nat} onChange={(c) => setNn({ ...nn, nat: c })} />
                     </div>
                     <button type="button" className="btn sm" style={{ marginTop: 10 }} onClick={addTraveler}>
                         Save traveler
@@ -289,7 +288,7 @@ export default function CreateTrip({ roster, tripTypes, interests }: { roster: R
             <Head title="New trip" />
             <div className="layout">
                 <main className="stack">
-                    <div className="row between">
+                    <div className="pagehead">
                         <div>
                             <h1>New trip</h1>
                             <p className="muted">

@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Shell } from '../../components/layout';
+import { CountryPicker } from '../../components/pickers';
 import { Av, Chip, Field } from '../../components/ui';
 import type { RosterEntry } from '../../types';
 
@@ -21,8 +22,8 @@ export default function TravelersIndex({ roster }: { roster: RosterEntry[] }) {
                 <div className="g2">
                     {roster.map((p) => (
                         <div key={p.id} className="card stack">
-                            <div className="row between">
-                                <div className="row">
+                            <div className="chead">
+                                <div className="who">
                                     <Av k={p.key} name={p.name} style={{ margin: 0 }} />
                                     <div>
                                         <b>{p.name}</b>
@@ -67,9 +68,7 @@ export default function TravelersIndex({ roster }: { roster: RosterEntry[] }) {
                         <Field id="n-age" label="Age">
                             <input id="n-age" type="number" min="0" max="110" required value={nn.age} onChange={(e) => setNn({ ...nn, age: e.target.value })} />
                         </Field>
-                        <Field id="n-nat" label="Nationality (2-letter code)">
-                            <input id="n-nat" maxLength={2} value={nn.nat} onChange={(e) => setNn({ ...nn, nat: e.target.value.toUpperCase() })} />
-                        </Field>
+                        <CountryPicker id="n-nat" label="Nationality" value={nn.nat} onChange={(c) => setNn({ ...nn, nat: c })} />
                     </div>
                     <div>
                         <button className="btn">Save traveler</button>

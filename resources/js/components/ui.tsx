@@ -69,7 +69,7 @@ export const smallChip: React.CSSProperties = { minHeight: 24, padding: '2px 10p
 
 export function ToggleChip({ on, onClick, children, disabled }: { on: boolean; onClick: () => void; children: ReactNode; disabled?: boolean }) {
     return (
-        <button type="button" className="chip" aria-pressed={on} onClick={onClick} disabled={disabled}>
+        <button type="button" className="chip opt" aria-pressed={on} onClick={onClick} disabled={disabled}>
             {children}
         </button>
     );

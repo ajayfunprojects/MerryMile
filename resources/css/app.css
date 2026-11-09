@@ -136,3 +136,50 @@ a.btn{text-decoration:none}
 @media (max-width:860px){.whoami{flex-direction:row;align-items:center;margin:0 0 0 auto;padding:0;border:0}.whoami .xs{display:none}.whoami .btn{margin:0}}
 @media print{.side,.tabs,.btn{display:none!important}}
 details.ed > summary.linkish{color:var(--muted);text-decoration:none;font-weight:600}details.ed > summary.linkish:hover{color:var(--brand);text-decoration:underline}
+
+/* ---------- Form consistency (sweep fixes) ---------- */
+/* Option chips in forms: outlined when off, filled with a check when on. */
+.chip.opt{background:transparent;border-color:var(--line);color:var(--ink)}
+.chip.opt:hover{border-color:var(--muted)}
+.chip.opt[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.chip.opt[aria-pressed=true]::before{content:"✓";font-weight:800}
+.chip.opt[disabled]{opacity:.6;cursor:default}
+/* Form sections: one heading style, one grid, one spacing rhythm. */
+.fsec{display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)}
+.fsec:first-child{padding-top:0;border-top:0}
+.fsec>header h3{font-size:16px}.fsec>header p{font-size:13px;color:var(--muted);margin-top:2px}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;align-items:start}
+.fgrid .span2{grid-column:1/-1}
+.fsub{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+@media (max-width:600px){.fgrid{grid-template-columns:minmax(0,1fr)}}
+/* Save bar that stays in reach on long forms. */
+.savebar{position:sticky;bottom:0;z-index:5;display:flex;gap:10px;align-items:center;margin:4px -20px -20px;padding:14px 20px;background:var(--surface);border-top:1px solid var(--line);border-radius:0 0 24px 24px}
+/* Search-as-you-type picker */
+.cbx{position:relative}
+.cbx-box{position:relative}.cbx-box input{padding-right:40px}
+.cbx-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:0;border-radius:50%;background:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+.cbx-clear:hover{background:var(--raised);color:var(--ink)}
+.cbx-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;margin:0;padding:6px;list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 48px -16px rgba(20,16,40,.4);max-height:320px;overflow-y:auto}
+.cbx-opt{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;cursor:pointer}
+.cbx-opt[aria-selected=true]{background:var(--chip);color:var(--chip-ink)}
+.cbx-empty{padding:10px;color:var(--muted);font-size:13px}
+.cbx-code{font:700 12px var(--font);letter-spacing:.04em;background:var(--raised);color:var(--ink);border-radius:8px;padding:3px 7px;flex:none}
+/* Card headers: name block shrinks, action stays put */
+.chead{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.chead>.who{display:flex;gap:12px;align-items:center;min-width:0;flex:1}
+.chead>.who>div{min-width:0}.chead>.btn,.chead>a.btn{flex:none}
+.pagehead{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.pagehead>div{min-width:0}.pagehead>.btn,.pagehead>a.btn{flex:none}
+.navlinks{display:flex;flex-direction:column;gap:6px}
+
+/* ---------- Phones: slim top bar + bottom tab bar ---------- */
+@media (max-width:860px){
+  body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+  .side{flex-direction:row!important;flex-wrap:nowrap!important;justify-content:space-between;padding:10px 14px;border-radius:20px}
+  .side .logo{font-size:20px}.side .logo svg{width:34px;height:34px}
+  .navlinks{position:fixed;left:0;right:0;bottom:0;z-index:15;flex-direction:row;justify-content:space-around;gap:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 24px -16px rgba(20,33,43,.3)}
+  .navlinks .nav{flex-direction:column;gap:3px;font-size:12px;padding:6px 14px;min-height:54px;border-radius:16px;justify-content:center}
+  .whoami b{display:none}
+  #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  .savebar{bottom:calc(76px + env(safe-area-inset-bottom,0px));margin:4px -20px -20px}
+}

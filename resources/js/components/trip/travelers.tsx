@@ -71,8 +71,8 @@ export function TravelersTab({ trip: t }: { trip: Trip }) {
         <div className="stack">
             {t.travelers.map((p) => (
                 <div key={p.id} className="card stack">
-                    <div className="row between">
-                        <div className="row">
+                    <div className="chead">
+                        <div className="who">
                             <Av k={p.key} name={p.name} style={{ margin: 0 }} />
                             <div>
                                 <b>{p.name}</b>

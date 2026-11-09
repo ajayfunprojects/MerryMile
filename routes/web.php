@@ -7,6 +7,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ItineraryController;
 use App\Http\Controllers\LogisticsController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\PlacesController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\TravelerController;
 use App\Http\Controllers\TripController;
@@ -90,6 +91,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/travelers/{traveler}', [TravelerController::class, 'update']);
     Route::delete('/travelers/{traveler}', [TravelerController::class, 'destroy']);
     Route::post('/travelers/{traveler}/reveal-passport', [TravelerController::class, 'revealPassport'])->middleware('throttle:10,1');
+
+    // Live search for the home-airport picker
+    Route::get('/airports/search', [PlacesController::class, 'airports'])->middleware('throttle:120,1');
 
     // Account
     Route::get('/account', [AccountController::class, 'show']);

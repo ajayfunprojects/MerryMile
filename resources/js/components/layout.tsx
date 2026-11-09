@@ -63,9 +63,11 @@ export function Shell({ children, active }: { children: ReactNode; active: 'trip
                         </span>
                     </Link>
                     <div className="tag">Travel Together, Fun Together, Memories for a Lifetime</div>
-                    {nav('trips', 'Trips')}
-                    {nav('travelers', 'Travelers')}
-                    {nav('account', 'Account')}
+                    <div className="navlinks">
+                        {nav('trips', 'Trips')}
+                        {nav('travelers', 'Travelers')}
+                        {nav('account', 'Account')}
+                    </div>
                     {auth.user && (
                         <div className="whoami">
                             <span className="xs muted">Signed in as</span>

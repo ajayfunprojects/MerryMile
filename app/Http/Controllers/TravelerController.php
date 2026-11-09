@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Traveler;
+use App\Support\Places;
 use App\Support\Roster;
 use App\Support\Samples;
 use App\Support\TravelerAccess;
@@ -34,7 +35,7 @@ class TravelerController extends Controller
             'name' => 'required|string|max:120',
             'age' => 'required_without:date_of_birth|nullable|integer|min:0|max:110',
             'date_of_birth' => 'nullable|date|before_or_equal:today',
-            'nat' => 'nullable|string|size:2',
+            'nat' => ['nullable', 'string', 'size:2', fn ($a, $v, $fail) => Places::isCountry($v) || $fail('Pick a nationality from the list.')],
             'guardians' => 'array',
             'guardians.*' => 'integer',
         ], ['age.required_without' => 'Enter a name and age for the new traveler.', 'name.required' => 'Enter a name and age for the new traveler.']);
@@ -91,6 +92,7 @@ class TravelerController extends Controller
                 'exp' => $traveler->passport_expiry?->toDateString(),
                 'city' => $traveler->home_city,
                 'airport' => $traveler->home_airport,
+                'airportInfo' => Places::airport($traveler->home_airport),
                 'interests' => $traveler->interests ?? [],
                 'needs' => $needs,
                 'medNote' => $medical ? $traveler->medical_notes : null,
@@ -130,10 +132,10 @@ class TravelerController extends Controller
             'name' => 'required|string|max:120',
             'dob' => 'nullable|date|before_or_equal:today',
             'gender' => 'nullable|in:Male,Female,Other',
-            'nat' => 'nullable|string|size:2',
+            'nat' => ['nullable', 'string', 'size:2', fn ($a, $v, $fail) => Places::isCountry($v) || $fail('Pick a nationality from the list.')],
             'exp' => 'nullable|date',
             'city' => 'nullable|string|max:120',
-            'airport' => 'nullable|string|max:3',
+            'airport' => ['nullable', 'string', 'size:3', fn ($a, $v, $fail) => Places::airport($v) || $fail('Pick a home airport from the list.')],
             'ppn' => 'nullable|string|max:30',
             'medNote' => 'nullable|string|max:2000',
             'interests' => 'array',

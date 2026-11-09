@@ -24,23 +24,34 @@ function FlightEditor({ t, p }: { t: Trip; p: TripTraveler }) {
     return (
         <details className="ed">
             <summary className="btn ghost sm">Edit {p.first}'s flights</summary>
-            <div className="stack" style={{ gap: 10 }}>
-                <div className="row">
-                    <span className="xs muted" style={{ width: 70 }}>
-                        Arrival
-                    </span>
-                    <input style={{ width: 130 }} aria-label="Arrival flight number" placeholder="Flight no." value={v.arrival_flight} onChange={(e) => setV({ ...v, arrival_flight: e.target.value })} />
-                    <input style={{ width: 140 }} aria-label="Landing time" type="time" value={v.arrival_time} onChange={(e) => setV({ ...v, arrival_time: e.target.value })} />
+            <div className="card stack" style={{ boxShadow: 'none', gap: 14, marginTop: 4 }}>
+                <div className="fgrid">
+                    <Field id={'af-' + p.id} label="Arrival flight number">
+                        <input id={'af-' + p.id} placeholder="e.g. AI 879" value={v.arrival_flight} onChange={(e) => setV({ ...v, arrival_flight: e.target.value.toUpperCase() })} />
+                    </Field>
+                    <Field id={'at-' + p.id} label="Lands at (local time)">
+                        <input id={'at-' + p.id} type="time" value={v.arrival_time} onChange={(e) => setV({ ...v, arrival_time: e.target.value })} />
+                    </Field>
+                    <Field id={'df-' + p.id} label="Departure flight number">
+                        <input id={'df-' + p.id} placeholder="e.g. 6E 597" value={v.departure_flight} onChange={(e) => setV({ ...v, departure_flight: e.target.value.toUpperCase() })} />
+                    </Field>
+                    <Field id={'dt-' + p.id} label="Departs at (local time)">
+                        <input id={'dt-' + p.id} type="time" value={v.departure_time} onChange={(e) => setV({ ...v, departure_time: e.target.value })} />
+                    </Field>
+                    {t.can.admin && (
+                        <Field id={'dl-' + p.id} label={`${p.first}'s own first-day deadline (optional)`}>
+                            <input
+                                id={'dl-' + p.id}
+                                type="time"
+                                defaultValue={p.deadlineOverride || ''}
+                                onChange={(e) => act('patch', `/trips/${t.id}/travelers/${p.id}/flights`, { deadline_override: e.target.value || null })}
+                            />
+                        </Field>
+                    )}
                 </div>
-                <div className="row">
-                    <span className="xs muted" style={{ width: 70 }}>
-                        Departure
-                    </span>
-                    <input style={{ width: 130 }} aria-label="Departure flight number" placeholder="Flight no." value={v.departure_flight} onChange={(e) => setV({ ...v, departure_flight: e.target.value })} />
-                    <input style={{ width: 140 }} aria-label="Departure time" type="time" value={v.departure_time} onChange={(e) => setV({ ...v, departure_time: e.target.value })} />
-                </div>
-                <div className="row">
+                <div>
                     <button
+                        type="button"
                         className="btn sm"
                         onClick={() =>
                             act('patch', `/trips/${t.id}/travelers/${p.id}/flights`, {
@@ -53,18 +64,6 @@ function FlightEditor({ t, p }: { t: Trip; p: TripTraveler }) {
                     >
                         Save flights
                     </button>
-                    {t.can.admin && (
-                        <label className="row xs muted">
-                            Own deadline
-                            <input
-                                style={{ width: 130 }}
-                                type="time"
-                                defaultValue={p.deadlineOverride || ''}
-                                aria-label={`Deadline for ${p.first}`}
-                                onChange={(e) => act('patch', `/trips/${t.id}/travelers/${p.id}/flights`, { deadline_override: e.target.value || null })}
-                            />
-                        </label>
-                    )}
                 </div>
             </div>
         </details>
