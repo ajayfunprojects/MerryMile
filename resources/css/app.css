@@ -183,3 +183,14 @@ details.ed > summary.linkish{color:var(--muted);text-decoration:none;font-weight
   #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   .savebar{bottom:calc(76px + env(safe-area-inset-bottom,0px));margin:4px -20px -20px}
 }
+
+/* ---------- Date and time fields: same size as every other field (Safari / iPhone fix) ---------- */
+/* Safari draws these with its own styling: it ignores min-height (so they look thinner) and gives
+   them a fixed minimum width (so they run wider than the column). Give all single-line fields one
+   explicit height and take over the date/time styling. */
+input:not([type=checkbox]):not([type=radio]),select{height:46px}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;line-height:normal;background-color:var(--surface);text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:1.4em}
+input[type=date]::-webkit-datetime-edit,input[type=time]::-webkit-datetime-edit{padding:0}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
+.composer input{height:40px}
