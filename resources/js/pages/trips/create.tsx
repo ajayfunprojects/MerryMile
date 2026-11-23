@@ -1,94 +1,60 @@
-import { Head, Link, router, usePage } from "@inertiajs/react";
-import { useState } from "react";
-import { Shell } from "../../components/layout";
-import { CountryPicker } from "../../components/pickers";
-import {
-    emptyPlanState,
-    PlanRequest,
-    PlanState,
-    PlanStep,
-} from "../../components/planner/plan-step";
-import {
-    MAX_NIGHTS,
-    placeOf,
-    slotKey,
-    WhereWhen,
-} from "../../components/planner/types";
-import { WhereWhenStep } from "../../components/planner/where-when";
-import { Avs, Chip, Field, Lock, Tile } from "../../components/ui";
-import { addDays, fd, todayIso } from "../../lib/util";
-import type { RosterEntry, SharedProps } from "../../types";
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import { Shell } from '../../components/layout';
+import { CountryPicker } from '../../components/pickers';
+import { emptyPlanState, PlanRequest, PlanState, PlanStep } from '../../components/planner/plan-step';
+import { MAX_NIGHTS, placeOf, slotKey, WhereWhen } from '../../components/planner/types';
+import { WhereWhenStep } from '../../components/planner/where-when';
+import { Avs, Chip, Field, Lock, Tile } from '../../components/ui';
+import { addDays, fd, todayIso } from '../../lib/util';
+import type { RosterEntry, SharedProps } from '../../types';
 
-const STEPS = ["Where and when", "Travelers", "Your plan", "Review"];
-const SUBTITLES = [
-    "Where are you going, and for how long?",
-    "Who is coming along?",
-    "Your proposed route: keep what you like",
-    "Review and create",
-];
+const STEPS = ['Where and when', 'Travelers', 'Your plan', 'Review'];
+const SUBTITLES = ['Where are you going, and for how long?', 'Who is coming along?', 'Your proposed route: keep what you like', 'Review and create'];
 
 /** "2 adults, 1 child aged 8": the same age-only summary the planner sends to the AI. */
 function groupLabel(ages: (number | null)[]) {
-    const kids = ages
-        .filter((a): a is number => a !== null && a < 13)
-        .sort((a, b) => a - b);
-    const teens = ages
-        .filter((a): a is number => a !== null && a >= 13 && a < 18)
-        .sort((a, b) => a - b);
-    const seniors = ages
-        .filter((a): a is number => a !== null && a >= 65)
-        .sort((a, b) => a - b);
+    const kids = ages.filter((a): a is number => a !== null && a < 13).sort((a, b) => a - b);
+    const teens = ages.filter((a): a is number => a !== null && a >= 13 && a < 18).sort((a, b) => a - b);
+    const seniors = ages.filter((a): a is number => a !== null && a >= 65).sort((a, b) => a - b);
     const adults = ages.filter((a) => a !== null && a >= 18 && a < 65).length;
     const unknown = ages.filter((a) => a === null).length;
-    const aged = (l: number[], one: string, many: string) =>
-        l.length
-            ? `${l.length} ${l.length === 1 ? one : many} aged ${l.join(", ")}`
-            : "";
+    const aged = (l: number[], one: string, many: string) => (l.length ? `${l.length} ${l.length === 1 ? one : many} aged ${l.join(', ')}` : '');
     return [
-        adults ? `${adults} ${adults === 1 ? "adult" : "adults"}` : "",
-        aged(teens, "teenager", "teenagers"),
-        aged(kids, "child", "children"),
-        aged(seniors, "senior", "seniors"),
-        unknown ? `${unknown} of unknown age` : "",
+        adults ? `${adults} ${adults === 1 ? 'adult' : 'adults'}` : '',
+        aged(teens, 'teenager', 'teenagers'),
+        aged(kids, 'child', 'children'),
+        aged(seniors, 'senior', 'seniors'),
+        unknown ? `${unknown} of unknown age` : '',
     ]
         .filter(Boolean)
-        .join(", ");
+        .join(', ');
 }
 
-export default function CreateTrip({
-    roster,
-    interests,
-}: {
-    roster: RosterEntry[];
-    interests: string[];
-}) {
+export default function CreateTrip({ roster, interests }: { roster: RosterEntry[]; interests: string[] }) {
     const self = roster.find((p) => p.isSelf);
     const { errors } = usePage<SharedProps>().props;
     const [step, setStep] = useState(0);
     const [w, setW] = useState<WhereWhen>({
         places: [],
-        mode: "exact",
+        mode: 'exact',
         start: addDays(todayIso(), 30),
         nights: 7,
     });
-    const [tailor, setTailor] = useState<boolean | null>(null);
+    const [tailor, setTailor] = useState(true); // tailor to the travelers unless they pick the popular route
     const [plan, setPlanState] = useState<PlanState>(emptyPlanState);
     const [sel, setSel] = useState<number[]>(self ? [self.id] : []);
-    const [name, setName] = useState("");
-    const [nn, setNn] = useState({ name: "", age: "", nat: "US" });
-    const [err, setErr] = useState("");
+    const [name, setName] = useState('');
+    const [nn, setNn] = useState({ name: '', age: '', nat: 'US' });
+    const [err, setErr] = useState('');
     const [busy, setBusy] = useState(false);
     const byId = (id: number) => roster.find((p) => p.id === id);
-    const usingPlan = plan.status === "done" && !!plan.plan;
+    const usingPlan = plan.status === 'done' && !!plan.plan;
     const onSlots = usingPlan ? plan.slots.filter((s) => s.on) : [];
-    const end = w.start ? addDays(w.start, w.nights) : "";
+    const end = w.start ? addDays(w.start, w.nights) : '';
 
-    const people = sel
-        .map((id) => byId(id))
-        .filter((p): p is RosterEntry => !!p);
-    const groupInts = interests.filter((i) =>
-        people.some((p) => p.interests.includes(i)),
-    );
+    const people = sel.map((id) => byId(id)).filter((p): p is RosterEntry => !!p);
+    const groupInts = interests.filter((i) => people.some((p) => p.interests.includes(i)));
     const ints = tailor ? groupInts : [];
     const group = groupLabel(people.map((p) => p.age));
 
@@ -96,55 +62,32 @@ export default function CreateTrip({
         places: w.places,
         start: w.start,
         nights: w.nights,
-        flexible: w.mode === "month",
+        flexible: w.mode === 'month',
         tailor: !!tailor,
         travelers: tailor ? [...sel].sort((a, b) => a - b) : [],
     };
 
-    const defaultName = () =>
-        usingPlan && plan.plan!.title && !plan.sample
-            ? plan.plan!.title
-            : w.places.slice(0, 3).join(" and ") +
-              (w.start
-                  ? ", " + fd(w.start, { month: "long", year: "numeric" })
-                  : "");
+    const defaultName = () => (usingPlan && plan.plan!.title && !plan.sample ? plan.plan!.title : w.places.slice(0, 3).join(' and ') + (w.start ? ', ' + fd(w.start, { month: 'long', year: 'numeric' }) : ''));
 
     const validate = () => {
         if (step === 0) {
-            if (!w.places.length) return "Add at least one destination.";
-            if (!w.start)
-                return w.mode === "exact"
-                    ? "Pick a start date."
-                    : "Pick a month.";
-            if (w.nights < 1 || w.nights > MAX_NIGHTS)
-                return `Trips can be 1 to ${MAX_NIGHTS} nights.`;
+            if (!w.places.length) return 'Add at least one destination.';
+            if (!w.start) return w.mode === 'exact' ? 'Pick a start date.' : 'Pick a month.';
+            if (w.nights < 1 || w.nights > MAX_NIGHTS) return `Trips can be 1 to ${MAX_NIGHTS} nights.`;
         }
         if (step === 1) {
             for (const id of sel) {
                 const p = byId(id);
-                if (
-                    p &&
-                    p.isMinor &&
-                    !p.guardianIds.some((g) => sel.includes(g))
-                )
-                    return (
-                        p.first +
-                        " is a minor. Add a linked adult who is also traveling."
-                    );
+                if (p && p.isMinor && !p.guardianIds.some((g) => sel.includes(g))) return p.first + ' is a minor. Add a linked adult who is also traveling.';
             }
-            if (tailor === null)
-                return "Choose how the itinerary should be planned.";
         }
         if (step === 2) {
-            if (plan.status === "pending" || plan.status === "idle")
-                return "The plan is still being made.";
-            if (usingPlan && !onSlots.length)
-                return "Keep at least one city switched on.";
-            if (usingPlan && w.nights > MAX_NIGHTS)
-                return `Trips can be up to ${MAX_NIGHTS} nights.`;
+            if (plan.status === 'pending' || plan.status === 'idle') return 'The plan is still being made.';
+            if (usingPlan && !onSlots.length) return 'Keep at least one city switched on.';
+            if (usingPlan && w.nights > MAX_NIGHTS) return `Trips can be up to ${MAX_NIGHTS} nights.`;
         }
-        if (step === 3 && !name.trim()) return "Give the trip a name.";
-        return "";
+        if (step === 3 && !name.trim()) return 'Give the trip a name.';
+        return '';
     };
 
     const next = () => {
@@ -164,7 +107,7 @@ export default function CreateTrip({
         const base = {
             name: name.trim(),
             start: w.start,
-            flexible: w.mode === "month",
+            flexible: w.mode === 'month',
             types: [],
             interests: ints,
             travelers: sel,
@@ -180,20 +123,20 @@ export default function CreateTrip({
                   })),
               }
             : { ...base, end, dests: w.places };
-        router.post("/trips", body as never, {
+        router.post('/trips', body as never, {
             onFinish: () => setBusy(false),
         });
     };
 
     const addTraveler = () => {
-        if (!nn.name.trim() || nn.age === "") {
-            setErr("Enter a name and age for the new traveler.");
+        if (!nn.name.trim() || nn.age === '') {
+            setErr('Enter a name and age for the new traveler.');
             return;
         }
         const before = new Set(roster.map((p) => p.id));
         const adults = sel.filter((id) => !byId(id)?.isMinor);
         router.post(
-            "/travelers",
+            '/travelers',
             {
                 name: nn.name,
                 age: Number(nn.age),
@@ -204,11 +147,9 @@ export default function CreateTrip({
                 preserveState: true,
                 preserveScroll: true,
                 onSuccess: (page) => {
-                    const fresh = (
-                        page.props as unknown as { roster: RosterEntry[] }
-                    ).roster.find((p) => !before.has(p.id));
-                    setNn({ name: "", age: "", nat: "US" });
-                    setErr("");
+                    const fresh = (page.props as unknown as { roster: RosterEntry[] }).roster.find((p) => !before.has(p.id));
+                    setNn({ name: '', age: '', nat: 'US' });
+                    setErr('');
                     if (fresh) setSel((cur) => [...cur, fresh.id]);
                 },
             },
@@ -219,131 +160,62 @@ export default function CreateTrip({
 
     let body = null;
     if (step === 0) body = <WhereWhenStep w={w} onChange={setW} />;
-    if (step === 2)
-        body = (
-            <PlanStep
-                req={req}
-                w={w}
-                state={plan}
-                setState={setPlanState}
-                onNights={(n) => setW((cur) => ({ ...cur, nights: n }))}
-            />
-        );
+    if (step === 2) body = <PlanStep req={req} w={w} state={plan} setState={setPlanState} onNights={(n) => setW((cur) => ({ ...cur, nights: n }))} />;
     if (step === 1)
         body = (
             <div className="card stack">
                 <div>
                     <h3>Who is going?</h3>
-                    <p className="muted sm">
-                        Saved travelers, ready to reuse. Minors need a traveling
-                        adult selected. Invite people with their own login after
-                        the trip is created.
-                    </p>
+                    <p className="muted sm">Saved travelers, ready to reuse. Minors need a traveling adult selected. Invite people with their own login after the trip is created.</p>
                 </div>
                 {roster.map((p) => (
                     <label key={p.id} className="pick">
-                        <input
-                            type="checkbox"
-                            checked={sel.includes(p.id)}
-                            disabled={p.isSelf}
-                            onChange={() =>
-                                setSel(
-                                    sel.includes(p.id)
-                                        ? sel.filter((x) => x !== p.id)
-                                        : [...sel, p.id],
-                                )
-                            }
-                        />
+                        <input type="checkbox" checked={sel.includes(p.id)} disabled={p.isSelf} onChange={() => setSel(sel.includes(p.id) ? sel.filter((x) => x !== p.id) : [...sel, p.id])} />
                         <span className="grow">
                             <b>{p.name}</b>
-                            {p.isSelf ? " (you)" : ""}
-                            <span
-                                className="muted sm"
-                                style={{ display: "block" }}
-                            >
-                                {p.age ?? "Age not set"} · {p.nat || "—"} ·{" "}
-                                {p.diet.join(", ") || "No diet noted"}
-                                {p.isMinor
-                                    ? " · Minor, managed by " +
-                                      p.guardians.join(", ")
-                                    : ""}
+                            {p.isSelf ? ' (you)' : ''}
+                            <span className="muted sm" style={{ display: 'block' }}>
+                                {p.age ?? 'Age not set'} · {p.nat || '—'} · {p.diet.join(', ') || 'No diet noted'}
+                                {p.isMinor ? ' · Minor, managed by ' + p.guardians.join(', ') : ''}
                             </span>
                         </span>
                     </label>
                 ))}
                 <details>
-                    <summary
-                        className="btn ghost sm"
-                        style={{ display: "inline-flex" }}
-                    >
+                    <summary className="btn ghost sm" style={{ display: 'inline-flex' }}>
                         Add a new traveler
                     </summary>
                     <div className="g3" style={{ marginTop: 12 }}>
                         <Field id="n-name" label="Name as in passport">
-                            <input
-                                id="n-name"
-                                value={nn.name}
-                                onChange={(e) =>
-                                    setNn({ ...nn, name: e.target.value })
-                                }
-                            />
+                            <input id="n-name" value={nn.name} onChange={(e) => setNn({ ...nn, name: e.target.value })} />
                         </Field>
                         <Field id="n-age" label="Age">
-                            <input
-                                id="n-age"
-                                type="number"
-                                min="0"
-                                max="110"
-                                value={nn.age}
-                                onChange={(e) =>
-                                    setNn({ ...nn, age: e.target.value })
-                                }
-                            />
+                            <input id="n-age" type="number" min="0" max="110" value={nn.age} onChange={(e) => setNn({ ...nn, age: e.target.value })} />
                         </Field>
-                        <CountryPicker
-                            id="n-nat"
-                            label="Nationality"
-                            value={nn.nat}
-                            onChange={(c) => setNn({ ...nn, nat: c })}
-                        />
+                        <CountryPicker id="n-nat" label="Nationality" value={nn.nat} onChange={(c) => setNn({ ...nn, nat: c })} />
                     </div>
-                    <button
-                        type="button"
-                        className="btn sm"
-                        style={{ marginTop: 10 }}
-                        onClick={addTraveler}
-                    >
+                    <button type="button" className="btn sm" style={{ marginTop: 10 }} onClick={addTraveler}>
                         Save traveler
                     </button>
                 </details>
                 <section className="fsec" style={{ marginTop: 8 }}>
                     <header>
                         <h3>Tailor the itinerary to these travelers?</h3>
-                        <p>
-                            We can fit the route and activities to their saved
-                            interests and ages. Names and personal details are
-                            never shared.
-                        </p>
+                        <p>We can fit the route and activities to their saved interests and ages. Names and personal details are never shared.</p>
                     </header>
-                    <div
-                        className="tailor"
-                        role="group"
-                        aria-label="How to plan"
-                    >
+                    <div className="tailor" role="group" aria-label="How to plan">
                         <Tile
                             on={tailor === true}
                             onClick={() => {
                                 setTailor(true);
-                                setErr("");
+                                setErr('');
                             }}
                         >
                             <span>
                                 Yes, tailor it
                                 <small>
-                                    {groupInts.length
-                                        ? "Interests: " + groupInts.join(", ")
-                                        : "No saved interests yet, so it fits their ages only"}
-                                    {group ? " · " + group : ""}
+                                    {groupInts.length ? 'Interests: ' + groupInts.join(', ') : 'No saved interests yet, so it fits their ages only'}
+                                    {group ? ' · ' + group : ''}
                                 </small>
                             </span>
                         </Tile>
@@ -351,14 +223,12 @@ export default function CreateTrip({
                             on={tailor === false}
                             onClick={() => {
                                 setTailor(false);
-                                setErr("");
+                                setErr('');
                             }}
                         >
                             <span>
                                 No, show the most popular route
-                                <small>
-                                    A well-balanced plan most visitors enjoy.
-                                </small>
+                                <small>A well-balanced plan most visitors enjoy.</small>
                             </span>
                         </Tile>
                     </div>
@@ -369,38 +239,24 @@ export default function CreateTrip({
         body = (
             <div className="card stack">
                 <Field id="w-name" label="Trip name">
-                    <input
-                        id="w-name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                    />
+                    <input id="w-name" value={name} onChange={(e) => setName(e.target.value)} />
                 </Field>
                 <div className="muted">
-                    {w.mode === "exact"
-                        ? `${fd(w.start, { month: "short", day: "numeric", year: "numeric" })} to ${fd(end, { month: "short", day: "numeric", year: "numeric" })}`
-                        : fd(w.start, { month: "long", year: "numeric" }) +
-                          " (exact dates later)"}{" "}
-                    · {w.nights} {w.nights === 1 ? "night" : "nights"}
+                    {w.mode === 'exact'
+                        ? `${fd(w.start, { month: 'short', day: 'numeric', year: 'numeric' })} to ${fd(end, { month: 'short', day: 'numeric', year: 'numeric' })}`
+                        : fd(w.start, { month: 'long', year: 'numeric' }) + ' (exact dates later)'}{' '}
+                    · {w.nights} {w.nights === 1 ? 'night' : 'nights'}
                 </div>
                 {usingPlan ? (
                     <div>
                         <b>Route</b>
-                        <ol
-                            className="sm"
-                            style={{ margin: "6px 0 0 18px", padding: 0 }}
-                        >
+                        <ol className="sm" style={{ margin: '6px 0 0 18px', padding: 0 }}>
                             {onSlots.map((s) => {
                                 const p = placeOf(plan.plan!, s);
                                 return (
                                     <li key={s.id}>
-                                        {p.name} · {s.nights}{" "}
-                                        {s.nights === 1 ? "night" : "nights"}
-                                        {s.picks.length
-                                            ? " · " +
-                                              s.picks
-                                                  .map((j) => p.top3[j]?.title)
-                                                  .join(", ")
-                                            : ""}
+                                        {p.name} · {s.nights} {s.nights === 1 ? 'night' : 'nights'}
+                                        {s.picks.length ? ' · ' + s.picks.map((j) => p.top3[j]?.title).join(', ') : ''}
                                     </li>
                                 );
                             })}
@@ -415,46 +271,34 @@ export default function CreateTrip({
                             ))}
                         </div>
                         <p className="xs muted" style={{ marginTop: 6 }}>
-                            No plan: the trip starts with empty days for you to
-                            fill in.
+                            No plan: the trip starts with empty days for you to fill in.
                         </p>
                     </div>
                 )}
                 {(
                     [
-                        [
-                            "Tailored to",
-                            tailor
-                                ? [...ints, group].filter(Boolean)
-                                : ["Most popular route"],
-                        ],
-                        ["Travelers", sel.map((id) => byId(id)?.name || "")],
+                        ['Tailored to', tailor ? [...ints, group].filter(Boolean) : ['Most popular route']],
+                        ['Travelers', sel.map((id) => byId(id)?.name || '')],
                     ] as [string, string[]][]
                 ).map(([label, list]) => (
                     <div key={label}>
                         <b>{label}</b>
                         <div className="wrap" style={{ marginTop: 6 }}>
-                            {list.length ? (
-                                list.map((x) => <Chip key={x}>{x}</Chip>)
-                            ) : (
-                                <span className="muted sm">None</span>
-                            )}
+                            {list.length ? list.map((x) => <Chip key={x}>{x}</Chip>) : <span className="muted sm">None</span>}
                         </div>
                     </div>
                 ))}
                 <div className="note">
                     <Lock />
                     <span>
-                        {usingPlan
-                            ? "The chosen cities, stays, transfers and activities are added as Planned, marked as AI suggestions. "
-                            : ""}
+                        {usingPlan ? 'The chosen cities, stays, transfers and activities are added as Planned, marked as AI suggestions. ' : ''}
                         You will be the Trip Admin.
                     </span>
                 </div>
             </div>
         );
 
-    const wide = step === 2 && plan.status === "done";
+    const wide = step === 2 && plan.status === 'done';
     const main = (
         <main className="stack">
             <div className="pagehead">
@@ -468,28 +312,15 @@ export default function CreateTrip({
                     Cancel
                 </Link>
             </div>
-            <div
-                className="prog"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={4}
-                aria-valuenow={step + 1}
-            >
-                <i style={{ width: (step + 1) * 25 + "%" }}></i>
+            <div className="prog" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={step + 1}>
+                <i style={{ width: (step + 1) * 25 + '%' }}></i>
             </div>
             <div className="steps" role="list">
                 {STEPS.map((s, i) => (
-                    <span key={s} style={{ display: "contents" }}>
+                    <span key={s} style={{ display: 'contents' }}>
                         {i > 0 && <span className="muted">›</span>}
-                        <div
-                            className={
-                                "step" +
-                                (i === step ? " cur" : "") +
-                                (i < step ? " done" : "")
-                            }
-                            role="listitem"
-                        >
-                            <b>{i < step ? "✓" : i + 1}</b>
+                        <div className={'step' + (i === step ? ' cur' : '') + (i < step ? ' done' : '')} role="listitem">
+                            <b>{i < step ? '✓' : i + 1}</b>
                             {s}
                         </div>
                     </span>
@@ -508,35 +339,17 @@ export default function CreateTrip({
                     disabled={step === 0}
                     onClick={() => {
                         setStep(step - 1);
-                        setErr("");
+                        setErr('');
                     }}
                 >
                     Back
                 </button>
                 {step < 3 ? (
-                    <button
-                        type="button"
-                        className="btn"
-                        onClick={next}
-                        disabled={
-                            step === 2 &&
-                            (plan.status === "pending" ||
-                                plan.status === "idle")
-                        }
-                    >
-                        {step === 1
-                            ? "Plan my trip"
-                            : step === 2 && plan.status === "failed"
-                              ? "Continue without a plan"
-                              : "Continue"}
+                    <button type="button" className="btn" onClick={next} disabled={step === 2 && (plan.status === 'pending' || plan.status === 'idle')}>
+                        {step === 1 ? 'Plan my trip' : step === 2 && plan.status === 'failed' ? 'Continue without a plan' : 'Continue'}
                     </button>
                 ) : (
-                    <button
-                        type="button"
-                        className="btn coral"
-                        disabled={busy}
-                        onClick={create}
-                    >
+                    <button type="button" className="btn coral" disabled={busy} onClick={create}>
                         Create trip
                     </button>
                 )}
@@ -558,71 +371,43 @@ export default function CreateTrip({
                             <div>
                                 <div className="xs muted">Destinations</div>
                                 <div className="wrap" style={{ marginTop: 4 }}>
-                                    {(usingPlan
-                                        ? onSlots.map(
-                                              (s) =>
-                                                  placeOf(plan.plan!, s).name,
-                                          )
-                                        : w.places
-                                    ).map((x) => (
+                                    {(usingPlan ? onSlots.map((s) => placeOf(plan.plan!, s).name) : w.places).map((x) => (
                                         <Chip key={x}>{x}</Chip>
                                     ))}
-                                    {!w.places.length && (
-                                        <span className="muted sm">
-                                            Not chosen
-                                        </span>
-                                    )}
+                                    {!w.places.length && <span className="muted sm">Not chosen</span>}
                                 </div>
                             </div>
                             <div>
                                 <div className="xs muted">Dates</div>
                                 <b>
                                     {w.start
-                                        ? w.mode === "exact"
+                                        ? w.mode === 'exact'
                                             ? fd(w.start, {
-                                                  month: "short",
-                                                  day: "numeric",
+                                                  month: 'short',
+                                                  day: 'numeric',
                                               }) +
-                                              " to " +
+                                              ' to ' +
                                               fd(end, {
-                                                  month: "short",
-                                                  day: "numeric",
-                                                  year: "numeric",
+                                                  month: 'short',
+                                                  day: 'numeric',
+                                                  year: 'numeric',
                                               })
                                             : fd(w.start, {
-                                                  month: "long",
-                                                  year: "numeric",
+                                                  month: 'long',
+                                                  year: 'numeric',
                                               })
-                                        : "Not set"}
+                                        : 'Not set'}
                                 </b>
                                 <div className="xs muted">
-                                    {w.nights}{" "}
-                                    {w.nights === 1 ? "night" : "nights"}
+                                    {w.nights} {w.nights === 1 ? 'night' : 'nights'}
                                 </div>
                             </div>
                             <div>
                                 <div className="xs muted">Itinerary</div>
                                 <div className="wrap" style={{ marginTop: 4 }}>
-                                    {tailor
-                                        ? ints.map((x) => (
-                                              <Chip key={x}>{x}</Chip>
-                                          ))
-                                        : null}
-                                    {tailor && !ints.length && (
-                                        <span className="muted sm">
-                                            Tailored to ages
-                                        </span>
-                                    )}
-                                    {tailor === false && (
-                                        <span className="muted sm">
-                                            Most popular route
-                                        </span>
-                                    )}
-                                    {tailor === null && (
-                                        <span className="muted sm">
-                                            Not chosen
-                                        </span>
-                                    )}
+                                    {tailor ? ints.map((x) => <Chip key={x}>{x}</Chip>) : null}
+                                    {tailor && !ints.length && <span className="muted sm">Tailored to ages</span>}
+                                    {tailor === false && <span className="muted sm">Most popular route</span>}
                                 </div>
                             </div>
                             <div>
