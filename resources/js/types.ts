@@ -77,6 +77,8 @@ export interface Stay {
     assign: Record<string, number>;
     hasActual: boolean;
     actual: number | null;
+    lat: number | null;
+    lng: number | null;
 }
 
 export interface Leg {

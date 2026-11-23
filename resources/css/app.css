@@ -196,3 +196,25 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 .composer input{height:40px}
 /* iPhone Safari zooms the page when a field's text is under 16px; keep phones at 16px. */
 @media (max-width:860px){input,select,textarea{font-size:16px}}
+
+/* ---------- New-trip planner ---------- */
+.placebox{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:46px;padding:6px 8px;border:1px solid var(--line);border-radius:14px;background:var(--surface);cursor:text}
+.placebox:focus-within{border-color:var(--brand);box-shadow:var(--ring)}
+.placebox input{flex:1;min-width:160px;border:0;box-shadow:none!important;height:32px;min-height:32px;padding:0 6px;background:transparent}
+.placebox .chip{padding:4px 6px 4px 12px;min-height:30px}
+.chipx{border:0;background:none;color:inherit;font-size:18px;line-height:1;width:22px;height:22px;border-radius:50%;cursor:pointer}.chipx:hover{background:rgba(0,0,0,.15)}
+.cbx>.cbx-list{top:auto}
+.stepper{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface);height:46px}
+.stepper button{width:38px;height:38px;border-radius:50%;border:0;background:var(--raised);color:var(--ink);font:700 18px var(--font);cursor:pointer}
+.stepper button:disabled{opacity:.4;cursor:default}.stepper span{min-width:88px;text-align:center;font-size:14px}
+.ptl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.pslot{display:flex;flex-direction:column}
+.pslot.off .card{opacity:.6;border-style:dashed;box-shadow:none}
+.pconn{display:flex;flex-direction:column;gap:2px;margin:0 0 0 28px;padding:10px 0 10px 22px;border-left:2px dashed var(--line);font-weight:600;font-size:13px;color:var(--muted)}
+.pslot:first-child .pconn{display:none}
+.pslot+.pslot>.card:first-child{margin-top:14px}
+.pthing{padding:10px 12px}
+.skel{display:flex;flex-direction:column;gap:12px}.skel i{display:block;height:84px;border-radius:18px;background:linear-gradient(90deg,var(--raised),var(--bg),var(--raised));background-size:200% 100%;animation:skel 1.4s ease-in-out infinite}
+@keyframes skel{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.skel i{animation:none}}
+.pagehead>.chip{flex:none;white-space:nowrap}

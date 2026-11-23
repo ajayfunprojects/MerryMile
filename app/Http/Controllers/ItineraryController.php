@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\Day;
+use App\Services\Ai\ActivitySuggester;
+use App\Services\Ai\AiException;
 use App\Support\Samples;
 use App\Support\TripAccess;
 use Illuminate\Http\RedirectResponse;
@@ -45,10 +47,32 @@ class ItineraryController extends Controller
      * Sample suggestion until the AI service exists: picks an activity matching the
      * group's interests, preferring one that is not yet covered anywhere on the trip.
      */
-    public function suggest(Request $request, Day $day): RedirectResponse
+    public function suggest(Request $request, Day $day, ActivitySuggester $suggester): RedirectResponse
     {
         $trip = $day->trip;
         TripAccess::for($trip, $request->user())->abortUnless('edit');
+
+        if (config('merrymile.ai.enabled')) {
+            try {
+                $s = $suggester->suggest($day, $request->user()->id);
+            } catch (AiException $e) {
+                return back()->with('toast', $e->getMessage());
+            }
+            if ($s['title'] === '') {
+                return back()->with('toast', 'No new suggestion for this day.');
+            }
+            $day->activities()->create([
+                'title' => $s['title'],
+                'status' => 'suggested',
+                'origin' => 'ai',
+                'interest' => $s['interest'],
+                'position' => ($day->activities()->max('position') ?? 0) + 1,
+            ]);
+
+            return back();
+        }
+
+        // AI not connected yet: a labelled sample suggestion.
         $trip->load('travelers', 'days.activities');
 
         $group = array_keys(Samples::groupInterests($trip->interests ?? [], $trip->travelers));

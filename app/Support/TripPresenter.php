@@ -121,6 +121,8 @@ class TripPresenter
             'assign' => $personal ? (object) ($s->room_assignments ?? []) : (object) [],
             'hasActual' => $s->actual_cost !== null,
             'actual' => $money && $s->actual_cost !== null ? (float) $s->actual_cost : null,
+            'lat' => $s->lat !== null ? (float) $s->lat : null,
+            'lng' => $s->lng !== null ? (float) $s->lng : null,
         ])->values()->all();
 
         $legs = $trip->legs->map(fn ($l) => [

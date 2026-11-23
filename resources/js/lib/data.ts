@@ -1,16 +1,8 @@
 // Reference data from the prototype. Visa rules are sample rows standing in for the
-// Passport Index dataset; hotel and route suggestions stand in for the AI and price services.
+// Passport Index dataset; hotel options stand in for a hotel price service.
 import palettes from './palettes.json';
 
 export const PALETTES = palettes as Record<string, { name: string; note: string; light: Record<string, string> }>;
-
-export const COUNTRIES: Record<string, string[]> = {
-    India: ['Assam', 'Meghalaya', 'Kerala', 'Rajasthan', 'Goa'],
-    Thailand: ['Bangkok', 'Chiang Mai', 'Phuket'],
-    Japan: ['Tokyo', 'Kyoto', 'Osaka'],
-    Italy: ['Rome', 'Florence', 'Venice'],
-    'United States': ['Orlando', 'New York', 'Hawaii'],
-};
 
 export const VISA_US: Record<string, string> = {
     India: 'e-Visa',
@@ -42,16 +34,4 @@ export function hotelOpts(city: string) {
         { name: 'Option C: 4-star boutique stay in ' + city, kind: 'Boutique', stars: 4, type: 'Boutique', area: 'Near main sights', yes: ['Walkable to center', 'Vegetarian menu on site'], no: ['Pool', 'Free cancellation'] },
         { name: 'Option D: 5-star heritage property in ' + city, kind: 'Heritage', stars: 5, type: 'Heritage hotel', area: 'Scenic, 10 min from center', yes: ['Breakfast included', 'Free cancellation', 'Vegetarian menu on site', 'Guided local experiences'], no: ['Walkable to center'] },
     ];
-}
-
-export function suggestRoute(dests: string[]) {
-    if (dests.some((x) => x.startsWith('India')))
-        return [
-            { city: 'Guwahati', n: 2, why: 'Gateway city with flights from major hubs.' },
-            { city: 'Kaziranga', n: 3, why: 'Rhino and bird safaris, matches wildlife.' },
-            { city: 'Shillong', n: 2, why: 'Hill-town lakes and food.' },
-            { city: 'Cherrapunjee', n: 2, why: 'Waterfalls and living root bridges.' },
-        ];
-    if (dests.length) return dests.slice(0, 3).map((x) => ({ city: x.split(': ')[1] || x, n: 3, why: 'Sample stop based on your dates.' }));
-    return [{ city: 'Pick a region first', n: 0, why: 'Choose at least one region above.' }];
 }

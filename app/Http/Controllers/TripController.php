@@ -43,20 +43,28 @@ class TripController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:120',
+            'name' => 'required_without:plan_run_id|nullable|string|max:120',
             'start' => 'required|date',
-            'end' => 'required|date|after_or_equal:start',
+            'end' => 'required_without:plan_run_id|nullable|date|after_or_equal:start',
             'flexible' => 'boolean',
             'types' => 'array',
             'types.*' => 'string|max:60',
             'interests' => 'array',
             'interests.*' => 'string|max:60',
-            'dests' => 'required|array|min:1',
+            'dests' => 'required_without:plan_run_id|array',
             'dests.*' => 'string|max:120',
             'travelers' => 'array',
             'travelers.*' => 'integer',
+            // From the AI planning step: which stops (or alternatives) to keep, nights, and chosen activities.
+            'plan_run_id' => 'nullable|integer',
+            'plan' => 'required_with:plan_run_id|array|max:20',
+            'plan.*.key' => ['required', 'string', 'regex:/^\d{1,2}(\.[01])?$/'],
+            'plan.*.nights' => 'required|integer|min:1|max:30',
+            'plan.*.picks' => 'array|max:3',
+            'plan.*.picks.*' => 'integer|min:0|max:2',
         ], [
-            'dests.required' => 'Pick at least one region or city.',
+            'dests.required_without' => 'Pick at least one region or city.',
+            'name.required_without' => 'Give the trip a name.',
             'end.after_or_equal' => 'The end date comes before the start date.',
         ]);
         $data['travelers'] ??= [];

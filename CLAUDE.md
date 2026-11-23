@@ -20,9 +20,11 @@ Product spec: the "Travel Planner: Initial Dev Plan" doc. UI reference: the "Mer
   them in exports, chat, AI prompts or session flash data. Trip Admins never see passport numbers.
 - Medical views, passport reveals and role changes are written to `audit_logs`.
 - A minor can only be on a trip together with at least one linked adult (`TripBuilder::minorProblem`).
-- AI and price lookups must go through service classes (planned: `app/Services/Ai`,
-  `app/Services/Pricing`), never straight from controllers. Today `app/Support/Samples.php` stands
-  in for them, and anything sample-based is labelled as a sample in the UI.
+- AI calls go through `app/Services/Ai` (the `AiClient` interface; `AnthropicClient` is the real one,
+  tests bind `tests/Fakes/FakeAiClient`). Never call the SDK from a controller. Every call is logged in
+  `ai_runs` with tokens and cost. Prompts get places, dates, interests, ages and need labels only:
+  never names, emails, passport numbers or medical notes. Without `ANTHROPIC_API_KEY`, features fall
+  back to labelled samples. Price lookups will go through `app/Services/Pricing` the same way.
 - Money is USD only in Phase 1, but keep the `currency` columns.
 - Keep the prototype's look: reuse classes from `resources/css/app.css` rather than adding a CSS framework.
 - In-app actions use the `act()` helper (`resources/js/components/ui.tsx`), which keeps scroll and

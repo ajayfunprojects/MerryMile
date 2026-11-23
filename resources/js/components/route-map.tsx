@@ -10,7 +10,7 @@ const clean = (n: string) =>
         .replace(/^.*?:\s*/, '')
         .trim();
 
-function geoOf(name: string, ref: [number, number] | null): [number, number] {
+export function geoOf(name: string, ref: [number, number] | null): [number, number] {
     const c = clean(name);
     if (GEO[c]) return GEO[c];
     let h = 0;
@@ -30,8 +30,13 @@ function tripRef(t: Trip): [number, number] | null {
 function tripStops(t: Trip) {
     const out: { name: string; n: number | null; ll: [number, number] }[] = [];
     const ref = tripRef(t);
+    // Stays planned by AI carry real coordinates; older ones fall back to the name lookup.
+    const known: Record<string, [number, number]> = {};
+    t.stays.forEach((x) => {
+        if (x.lat != null && x.lng != null && (x.lat !== 0 || x.lng !== 0)) known[x.city] = [x.lat, x.lng];
+    });
     const add = (name: string, n: number | null) => {
-        if (!out.some((o) => o.name === name)) out.push({ name, n, ll: geoOf(name, ref) });
+        if (!out.some((o) => o.name === name)) out.push({ name, n, ll: known[name] || geoOf(name, ref) });
     };
     if (t.stays.length)
         t.stays.forEach((x) => {
@@ -43,12 +48,18 @@ function tripStops(t: Trip) {
 }
 
 export function RouteMap({ trip, labels, onJump, h = 260 }: { trip: Trip; labels?: boolean; onJump?: (day: number) => void; h?: number }) {
+    const st = tripStops(trip);
+    const ref = tripRef(trip);
+    const at = (n: string) => st.find((x) => x.name === n)?.ll || geoOf(n, ref);
+    const seq = trip.legs.length ? [trip.legs[0].from].concat(trip.legs.map((l) => l.to)).map(at) : st.map((x) => x.ll);
+    return <RouteSvg name={trip.name} stops={st} seq={seq} labels={labels} onJump={onJump} h={h} />;
+}
+
+/** Draws numbered stops joined by a dashed route. Coordinates are [lat, lng]. */
+export function RouteSvg({ name, stops: st, seq, labels, onJump, h = 260 }: { name: string; stops: { name: string; n: number | null; ll: [number, number] }[]; seq: [number, number][]; labels?: boolean; onJump?: (day: number) => void; h?: number }) {
     const W = 400,
         H = h,
         P = 44;
-    const st = tripStops(trip);
-    const ref = tripRef(trip);
-    const seq = trip.legs.length ? [trip.legs[0].from].concat(trip.legs.map((l) => l.to)).map((n) => geoOf(n, ref)) : st.map((x) => x.ll);
     const pts = seq.concat(st.map((x) => x.ll));
     if (!pts.length) {
         return (
@@ -78,7 +89,7 @@ export function RouteMap({ trip, labels, onJump, h = 260 }: { trip: Trip; labels
     const placed: [number, number][] = [];
     const gid = 'gr' + h;
     return (
-        <svg className="map" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Route map for ${trip.name}, stylized preview`}>
+        <svg className="map" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Route map for ${name}, stylized preview`}>
             <defs>
                 <pattern id={gid} width="32" height="32" patternUnits="userSpaceOnUse">
                     <path d="M32 0H0V32" fill="none" stroke="var(--line)" strokeWidth="1" />

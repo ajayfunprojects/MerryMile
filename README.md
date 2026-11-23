@@ -25,7 +25,7 @@ These parts behave like the prototype, show sample content, and are clearly labe
 
 | Feature | Today | Later (per the dev plan) |
 |---|---|---|
-| "Suggest one" activity, "Suggest cities and nights" | Picks from a fixed sample list | Claude AI service with a 24-hour cache |
+| AI trip planning ("Your plan" step) and "Suggest one" on a day | **Real AI (Claude) once `ANTHROPIC_API_KEY` is set**; clearly labelled sample plans until then | Web search for fresher details |
 | Hotel comparison and price ranges | Four sample options, `[PRICE RANGE]` placeholders | Hotel and flight price service |
 | Visa rules | Sample rules for US passports | Passport Index dataset plus official sources |
 | Forward-your-tickets email address | Address is shown; nothing receives mail yet | Inbound mail service (Postmark or SES) with AI parsing |
@@ -87,6 +87,14 @@ You do this once. After that, every push to `main` redeploys automatically.
   and/or `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET`. The buttons appear automatically.
   Use these callback addresses when you register the apps:
   `https://YOUR-DOMAIN/auth/google/callback` and `https://YOUR-DOMAIN/auth/microsoft/callback`.
+- **AI trip planning.** Create an API key at [console.anthropic.com](https://console.anthropic.com)
+  (set a monthly spending limit there), then add it in **Settings → Environment variables** as
+  `ANTHROPIC_API_KEY` and deploy. Until then the planner shows labelled sample plans.
+  - Plans run right after the page answers, so no queue worker is needed. If plans ever time
+    out, add a queue worker cluster in Laravel Cloud and set `AI_DISPATCH=queue`.
+  - Each new plan costs roughly $0.10 to $0.20; identical requests within 24 hours reuse the
+    result for free. Each person can make up to 30 new plans a day (`AI_DAILY_LIMIT`).
+  - Every AI call is logged in the `ai_runs` table with its model, tokens and cost.
 - **Ticket inbox domain.** Set `INBOUND_EMAIL_DOMAIN` (for example `in.merrymile.com`) once you
   own a domain.
 
@@ -109,7 +117,7 @@ npm run build        # or: npm run dev, alongside php artisan serve
 php artisan serve
 ```
 
-Tests (45 feature and unit tests covering every role's permissions, privacy rules, invites,
+Tests (61 feature and unit tests covering every role's permissions, privacy rules, invites,
 chat and exports):
 
 ```bash
@@ -128,6 +136,8 @@ database Laravel Cloud uses) when the code is hosted on GitHub; on GitLab it is 
 | What each role is sent | `app/Support/TripPresenter.php` (hidden data never reaches the browser) |
 | Trip creation, minor rule | `app/Support/TripBuilder.php` |
 | Sample trip and sample suggestions | `app/Support/SampleTrip.php`, `app/Support/Samples.php` |
+| AI planning (Claude) | `app/Services/Ai/` (planner prompt and schema in `TripPlanner.php`), `app/Jobs/PlanTripJob.php` |
+| New-trip wizard | `resources/js/pages/trips/create.tsx`, `resources/js/components/planner/` |
 | Encryption of sensitive fields | `app/Casts/SensitiveEncrypted.php` |
 | Database schema | `database/migrations/` |
 | Pages | `resources/js/pages/`; trip tabs in `resources/js/components/trip/` |
