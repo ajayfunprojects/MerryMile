@@ -27,6 +27,9 @@ export interface PlanState {
 
 export const emptyPlanState: PlanState = { requestKey: '', runId: null, status: 'idle', plan: null, error: null, sample: false, slots: [], note: '' };
 
+/** Guardrail: plans give each stop 1 to 3 nights. People can still choose longer stays. */
+const MAX_PER_STOP = 3;
+
 let uid = 0;
 const newId = () => 's' + ++uid;
 
@@ -38,9 +41,13 @@ const totalNights = (slots: Slot[]) => slots.filter((s) => s.on).reduce((n, s) =
 function shareNights(slots: Slot[], extra: number, skip: Set<string>): Slot[] {
     const keep = slots.filter((s) => s.on && !skip.has(s.id));
     if (!keep.length || extra <= 0) return slots;
-    const add: Record<string, number> = {};
-    for (let i = 0; i < extra; i++) add[keep[i % keep.length].id] = (add[keep[i % keep.length].id] || 0) + 1;
-    return slots.map((s) => (add[s.id] ? { ...s, nights: s.nights + add[s.id] } : s));
+    // One night at a time to the stop with the fewest, so stops stay within 3 nights where possible.
+    const n: Record<string, number> = Object.fromEntries(keep.map((s) => [s.id, s.nights]));
+    for (let i = 0; i < extra; i++) {
+        const min = keep.reduce((a, b) => (n[b.id] < n[a.id] ? b : a));
+        n[min.id]++;
+    }
+    return slots.map((s) => (s.id in n ? { ...s, nights: n[s.id] } : s));
 }
 
 async function api(url: string, init?: RequestInit) {
@@ -322,8 +329,9 @@ export function PlanStep({ req, w, state, setState, onNights }: { req: PlanReque
                                     {s.on ? (
                                         <>
                                             <p className="sm muted">{p.why}</p>
-                                            <div className="row between">
+                                            <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
                                                 <Stepper value={s.nights} min={1} max={MAX_NIGHTS} label={'nights in ' + p.name} onChange={(n) => update(state.slots.map((x) => (x.id === s.id ? { ...x, nights: n } : x)))} />
+                                                {s.nights > MAX_PER_STOP && <span className="xs muted">Longer than our usual {MAX_PER_STOP} nights per stop. Fine if you want a slower stay.</span>}
                                             </div>
                                             <div>
                                                 <div className="fsub">Top 3 things to do</div>

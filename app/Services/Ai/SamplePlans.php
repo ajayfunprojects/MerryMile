@@ -18,7 +18,8 @@ class SamplePlans
             default => self::generic($input['places']),
         };
 
-        $count = max(1, min(count($catalogue), (int) round($input['nights'] / 2.5)));
+        // Guardrail: 1 to 3 nights per stop, so at least nights/3 stops (as far as the sample catalogue allows).
+        $count = max(1, min(count($catalogue), $input['nights'], max((int) ceil($input['nights'] / TripPlanner::MAX_NIGHTS_PER_STOP), (int) round($input['nights'] / 2.5))));
         $stops = array_slice($catalogue, 0, $count);
         $spare = array_slice($catalogue, $count);
         foreach (self::split($input['nights'], $count) as $i => $n) {
@@ -26,7 +27,7 @@ class SamplePlans
             // Alternatives: unused catalogue entries (rotated per stop), then experience stops nearby.
             $rot = count($spare) ? $i % count($spare) : 0;
             $pool = array_merge(array_slice($spare, $rot), array_slice($spare, 0, $rot), self::experiences($stops[$i]));
-            $stops[$i]['alternatives'] = array_map(fn ($a) => array_merge($a, ['nights' => max(1, min($n, 2))]), array_slice($pool, 0, 2));
+            $stops[$i]['alternatives'] = array_map(fn ($a) => array_merge($a, ['nights' => max(1, min($n, TripPlanner::MAX_NIGHTS_PER_STOP))]), array_slice($pool, 0, 2));
         }
 
         return [

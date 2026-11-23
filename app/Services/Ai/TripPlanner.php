@@ -112,13 +112,14 @@ class TripPlanner
         $prompt = $this->prompt($input);
         $result = $this->client->json(self::SYSTEM, $prompt, self::schema(), config('merrymile.ai.plan_effort'), self::MAX_TOKENS);
         $tokens = [$result->inputTokens, $result->outputTokens, $result->cacheReadTokens, $result->cost(), $result->durationMs];
-        $problem = self::problems($result->data, $input['nights']);
+        $max = self::maxNightsPerStop($input);
+        $problem = self::problems($result->data, $input['nights'], $max);
 
         if ($problem !== null) {
             // One retry, telling the model exactly what was wrong (dev plan section 9).
             $result = $this->client->json(self::SYSTEM, $prompt."\n\nYour previous answer had a problem: {$problem} Please answer again and fix it.", self::schema(), config('merrymile.ai.plan_effort'), self::MAX_TOKENS);
             $tokens = [$tokens[0] + $result->inputTokens, $tokens[1] + $result->outputTokens, $tokens[2] + $result->cacheReadTokens, $tokens[3] + $result->cost(), $tokens[4] + $result->durationMs];
-            if (($problem = self::problems($result->data, $input['nights'])) !== null) {
+            if (($problem = self::problems($result->data, $input['nights'], $max)) !== null) {
                 throw new AiException('The AI plan did not add up ('.$problem.'). Please try again.', true);
             }
         }
@@ -157,8 +158,16 @@ class TripPlanner
         return implode("\n", $lines);
     }
 
+    /** Guardrail: a stop gets 1 to 3 nights, unless the traveler's own wishes ask for longer stays. */
+    public const MAX_NIGHTS_PER_STOP = 3;
+
+    public static function maxNightsPerStop(array $input): ?int
+    {
+        return ($input['note'] ?? '') === '' ? self::MAX_NIGHTS_PER_STOP : null;
+    }
+
     /** Returns a short description of what is wrong with a plan, or null when it is usable. */
-    public static function problems(array $plan, int $nights): ?string
+    public static function problems(array $plan, int $nights, ?int $maxPerStop = self::MAX_NIGHTS_PER_STOP): ?string
     {
         $stops = $plan['stops'] ?? null;
         if (! is_array($stops) || count($stops) < 1 || count($stops) > 12) {
@@ -171,6 +180,9 @@ class TripPlanner
             }
             if ((int) ($s['nights'] ?? 0) < 1) {
                 return 'every stop needs at least 1 night.';
+            }
+            if ($maxPerStop !== null && (int) $s['nights'] > $maxPerStop) {
+                return 'stop '.($i + 1)." has {$s['nights']} nights, but each stop may have at most {$maxPerStop} nights. Add another stop instead.";
             }
             if (! is_array($s['alternatives'] ?? null) || count($s['alternatives']) < 1) {
                 return 'stop '.($i + 1).' needs two alternatives.';
@@ -218,7 +230,7 @@ class TripPlanner
             'tips' => array_slice(array_values(array_filter(array_map('strval', $plan['tips'] ?? []))), 0, 3),
             'nights' => $nights,
             'stops' => array_map(fn ($s) => $place($s) + [
-                'alternatives' => array_map($place, array_slice($s['alternatives'] ?? [], 0, 2)),
+                'alternatives' => array_map(fn ($a) => array_merge($place($a), ['nights' => min(self::MAX_NIGHTS_PER_STOP, max(1, (int) ($a['nights'] ?? 1)))]), array_slice($s['alternatives'] ?? [], 0, 2)),
             ], $plan['stops']),
         ];
     }
@@ -228,7 +240,9 @@ You are the trip planner inside Merrymile, an app where friends and families pla
 Given where someone wants to go, for how many nights and in which month, propose one realistic itinerary.
 
 How to plan:
-- Choose bases (stops) in a sensible travel order. Use roughly one base for every 2 to 3 nights; short trips get fewer moves. Prefer fewer, longer stays over rushing.
+- Choose bases (stops) in a sensible travel order.
+- Guardrail on time per stop: every stop gets at least 1 night (2 days) and at most 3 nights (4 days). So a trip of N nights has between N/3 (rounded up) and N stops. Prefer 2 to 3 nights per stop; use 1-night stops only for short trips or a stop on the way. The same 1 to 3 nights applies to alternatives.
+- If the traveler named fewer places than the guardrail needs, add nearby cities, regions or experience stops rather than staying longer than 3 nights. Break the guardrail only when the traveler's extra wishes clearly ask for a longer stay.
 - The nights of all stops must add up exactly to the trip length.
 - If the traveler named only a country or a large region, pick the best-known bases for the season and interests. If they named cities, use those cities in a sensible order and add others only if nights allow.
 - Consider the season of the travel month (monsoon, snow, heat, festivals, closures).

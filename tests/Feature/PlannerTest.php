@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Ai\AiClient;
 use App\Services\Ai\AiException;
 use App\Services\Ai\AiResult;
+use App\Services\Ai\SamplePlans;
 use App\Services\Ai\TripPlanner;
 use Tests\Fakes\FakeAiClient;
 
@@ -247,4 +248,31 @@ it('ignores traveler preferences when the user picks the most popular route', fu
 it('describes a group by age only', function () {
     expect(TripPlanner::groupLabel([40, 38, 8, 5, 15, 70, null]))
         ->toBe('2 adults, 1 teenager aged 15, 2 children aged 5, 8, 1 senior aged 70, 1 traveler of unknown age');
+});
+
+it('keeps every stop to 1 to 3 nights, asking the AI again when a stop is longer', function () {
+    $fake = fakeAi([aiPlan([2, 4, 1]), aiPlan([2, 3, 2])]);
+    $user = User::factory()->create();
+
+    $id = $this->actingAs($user)->postJson('/planner', REQ)->assertOk()->json('id');
+    $this->actingAs($user)->getJson("/planner/$id")->assertJsonPath('status', 'done')->assertJsonPath('plan.stops.1.nights', 3);
+
+    expect($fake->calls)->toHaveCount(2)
+        ->and($fake->calls[0]['system'])->toContain('at most 3 nights (4 days)')
+        ->and($fake->calls[1]['prompt'])->toContain('stop 2 has 4 nights, but each stop may have at most 3 nights');
+});
+
+it('allows a longer stay when the traveler asks for one', function () {
+    $fake = fakeAi([aiPlan([2, 4, 1])]);
+    $user = User::factory()->create();
+
+    $id = $this->actingAs($user)->postJson('/planner', REQ + ['note' => 'We want 4 nights in Kaziranga'])->assertOk()->json('id');
+    $this->actingAs($user)->getJson("/planner/$id")->assertJsonPath('status', 'done')->assertJsonPath('plan.stops.1.nights', 4);
+    expect($fake->calls)->toHaveCount(1);
+});
+
+it('gives sample plans at most 3 nights per stop when the catalogue allows', function () {
+    $plan = SamplePlans::make(['places' => ['Japan'], 'nights' => 10]);
+    expect(array_column($plan['stops'], 'nights'))->each->toBeLessThanOrEqual(3)
+        ->and(array_sum(array_column($plan['stops'], 'nights')))->toBe(10);
 });
