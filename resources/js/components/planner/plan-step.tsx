@@ -10,8 +10,8 @@ export interface PlanRequest {
     start: string;
     nights: number;
     flexible: boolean;
-    types: string[];
-    interests: string[];
+    tailor: boolean; // fit the plan to the chosen travelers' saved interests and ages
+    travelers: number[]; // only sent when tailoring
 }
 
 export interface PlanState {
@@ -190,7 +190,7 @@ export function PlanStep({ req, w, state, setState, onNights }: { req: PlanReque
         }
     };
 
-    // Plan on first visit, or when the destinations, dates or interests changed.
+    // Plan on first visit, or when the destinations, dates or travelers changed.
     useEffect(() => {
         if (state.requestKey !== reqKey || state.status === 'idle') start(false);
         return () => window.clearTimeout(timer.current);

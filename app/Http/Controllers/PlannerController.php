@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\PlanTripJob;
 use App\Models\AiRun;
 use App\Services\Ai\TripPlanner;
+use App\Support\Roster;
 use App\Support\Samples;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,9 +28,18 @@ class PlannerController extends Controller
             'interests.*' => Rule::in(Samples::INTERESTS),
             'note' => 'nullable|string|max:200',
             'fresh' => 'boolean', // "Regenerate": skip the 24-hour cache
+            'tailor' => 'boolean', // fit the plan to the chosen travelers' saved interests and ages
+            'travelers' => 'array|max:40',
+            'travelers.*' => 'integer',
         ], ['places.required' => 'Add at least one destination.']);
 
         $user = $request->user();
+        if ($request->boolean('tailor') && ! empty($data['travelers'])) {
+            // Only the user's own saved travelers count. Names never leave the server: just interests and ages.
+            $people = Roster::query($user)->whereIn('id', $data['travelers'])->get();
+            $data['interests'] = array_values(array_intersect(Samples::INTERESTS, array_merge($data['interests'] ?? [], ...$people->map(fn ($t) => $t->interests ?? [])->all())));
+            $data['group'] = TripPlanner::groupLabel($people->map(fn ($t) => $t->age())->all());
+        }
         $input = TripPlanner::normalize($data);
         $key = TripPlanner::cacheKey($input);
 

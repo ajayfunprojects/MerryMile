@@ -45,7 +45,47 @@ class TripPlanner
             'types' => $sorted($in['types'] ?? []),
             'interests' => $sorted($in['interests'] ?? []),
             'note' => trim(mb_substr((string) ($in['note'] ?? ''), 0, 200)),
+            'group' => trim(mb_substr((string) ($in['group'] ?? ''), 0, 200)),
         ];
+    }
+
+    /**
+     * Describes the group by age only, e.g. "2 adults, 1 child aged 8, 1 senior aged 72".
+     * Ages are allowed in prompts; names and other details are not.
+     *
+     * @param  array<int, int|null>  $ages
+     */
+    public static function groupLabel(array $ages): string
+    {
+        $adults = 0;
+        $unknown = 0;
+        $kids = [];
+        $teens = [];
+        $seniors = [];
+        foreach ($ages as $a) {
+            match (true) {
+                $a === null => $unknown++,
+                $a < 13 => $kids[] = $a,
+                $a < 18 => $teens[] = $a,
+                $a >= 65 => $seniors[] = $a,
+                default => $adults++,
+            };
+        }
+        $aged = function (array $list, string $one, string $many) {
+            sort($list);
+            $n = count($list);
+
+            return $n ? $n.' '.($n === 1 ? $one : $many).' aged '.implode(', ', $list) : null;
+        };
+        $parts = array_filter([
+            $adults ? $adults.' '.($adults === 1 ? 'adult' : 'adults') : null,
+            $aged($teens, 'teenager', 'teenagers'),
+            $aged($kids, 'child', 'children'),
+            $aged($seniors, 'senior', 'seniors'),
+            $unknown ? $unknown.' '.($unknown === 1 ? 'traveler' : 'travelers').' of unknown age' : null,
+        ]);
+
+        return implode(', ', $parts);
     }
 
     /** Same places, length, month, interests and note share a result for 24 hours. */
@@ -107,6 +147,9 @@ class TripPlanner
             '- Trip types: '.($input['types'] ? implode(', ', $input['types']) : 'not given'),
             '- Interests: '.($input['interests'] ? implode(', ', $input['interests']) : 'not given, so plan the most popular, well-balanced itinerary'),
         ];
+        if (($input['group'] ?? '') !== '') {
+            $lines[] = '- The group: '.$input['group'].'. Choose stops, pace and activities that suit these ages.';
+        }
         if ($input['note'] !== '') {
             $lines[] = '- Extra wishes from the traveler: '.$input['note'];
         }

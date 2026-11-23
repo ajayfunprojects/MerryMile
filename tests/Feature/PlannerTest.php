@@ -1,11 +1,13 @@
 <?php
 
 use App\Models\AiRun;
+use App\Models\Traveler;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\Ai\AiClient;
 use App\Services\Ai\AiException;
 use App\Services\Ai\AiResult;
+use App\Services\Ai\TripPlanner;
 use Tests\Fakes\FakeAiClient;
 
 function place(string $name, int $nights, float $lat = 26.1, float $lng = 91.7, string $mode = 'Road'): array
@@ -213,4 +215,36 @@ it('finishes the plan right after the response when no queue worker is used', fu
     $user = User::factory()->create();
     $id = $this->actingAs($user)->postJson('/planner', REQ)->assertOk()->json('id');
     expect(AiRun::find($id)->status)->toBe('done');
+});
+
+it('tailors the plan to the chosen travelers using only their interests and ages', function () {
+    $fake = fakeAi([aiPlan()]);
+    $user = User::factory()->create();
+    $mine = fn ($name, $age, $ints) => Traveler::create(['owner_user_id' => $user->id, 'full_name' => $name, 'date_of_birth' => now()->subYears($age)->subDays(10), 'interests' => $ints, 'nationality' => 'US']);
+    $a = $mine('Ravi Hiddenname', 40, ['Adventure', 'Food']);
+    $b = $mine('Mira Hiddenname', 8, ['Wildlife']);
+    $c = $mine('Nana Hiddenname', 72, []);
+    $stranger = Traveler::create(['owner_user_id' => User::factory()->create()->id, 'full_name' => 'Not Mine', 'date_of_birth' => now()->subYears(30), 'interests' => ['Nightlife'], 'nationality' => 'US']);
+
+    $this->actingAs($user)->postJson('/planner', ['places' => ['Assam'], 'start' => '2027-02-10', 'nights' => 7, 'tailor' => true, 'travelers' => [$a->id, $b->id, $c->id, $stranger->id]])->assertOk();
+
+    $prompt = $fake->calls[0]['prompt'];
+    expect($prompt)->toContain('Interests: Adventure, Food, Wildlife')
+        ->toContain('The group: 1 adult, 1 child aged 8, 1 senior aged 72')
+        ->not->toContain('Hiddenname')->not->toContain('Nightlife')->not->toContain('Not Mine');
+});
+
+it('ignores traveler preferences when the user picks the most popular route', function () {
+    $fake = fakeAi([aiPlan()]);
+    $user = User::factory()->create();
+    $t = Traveler::create(['owner_user_id' => $user->id, 'full_name' => 'Ravi', 'date_of_birth' => now()->subYears(40), 'interests' => ['Adventure'], 'nationality' => 'US']);
+
+    $this->actingAs($user)->postJson('/planner', ['places' => ['Assam'], 'start' => '2027-02-10', 'nights' => 7, 'tailor' => false, 'travelers' => [$t->id]])->assertOk();
+
+    expect($fake->calls[0]['prompt'])->toContain('most popular')->not->toContain('Adventure')->not->toContain('The group');
+});
+
+it('describes a group by age only', function () {
+    expect(TripPlanner::groupLabel([40, 38, 8, 5, 15, 70, null]))
+        ->toBe('2 adults, 1 teenager aged 15, 2 children aged 5, 8, 1 senior aged 70, 1 traveler of unknown age');
 });
