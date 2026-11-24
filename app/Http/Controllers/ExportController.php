@@ -27,7 +27,11 @@ class ExportController extends Controller
         $access = TripAccess::for($trip, $request->user())->abortUnless('expenses');
         $trip->load('destinations', 'tripTravelers.traveler.guardians');
 
-        return view('settle-up', ['trip' => $trip, 'm' => TripPresenter::expenses($trip, $access, $request->user())]);
+        $m = TripPresenter::expenses($trip, $access, $request->user());
+        $hasFamilies = collect($m['families'])->contains(fn ($f) => $f['adults']);
+        $by = $hasFamilies ? (in_array($request->query('by'), ['person', 'family'], true) ? $request->query('by') : $m['settleBy']) : 'person';
+
+        return view('settle-up', ['trip' => $trip, 'm' => $m, 'byFamily' => $by === 'family']);
     }
 
     public function calendar(Request $request, Trip $trip): Response

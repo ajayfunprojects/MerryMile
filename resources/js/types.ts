@@ -156,6 +156,11 @@ export interface Money {
     currency: string;
     me: number | null; // your traveler id on this trip
     canSettle: boolean; // Treasurer or Trip Admin
+    canFamilies: boolean; // may group travelers into families (Treasurer or Trip Admin)
+    settleBy: 'person' | 'family'; // the trip's default view on Settle up
+    families: { id: number; name: string; lead: number | null; adults: { id: number; name: string }[]; kids: string[] }[];
+    familyBalances: { key: string; family: number | null; name: string; lead: number; leadName: string; members: string[]; paid: number; share: number; sent: number; received: number; balance: number }[];
+    familyTransfers: { from: number; to: number; amount: number; fromUnit: string; toUnit: string; fromName: string; toName: string; fromLead: string; toLead: string; canMark: boolean }[];
     expenses: {
         id: number;
         title: string;

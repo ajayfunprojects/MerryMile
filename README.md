@@ -18,7 +18,8 @@ Merrymile is a group trip planner for friends and family. It is the Laravel vers
   traveler can see who looked.
 - **Shared expenses:** anyone on the trip logs what they paid for the group; a child's share goes to
   their adult. **Settle up** shows what each person paid, their share and balance, and the fewest
-  payments to square up, with Mark as paid and a printable summary.
+  payments to square up, with Mark as paid and a printable summary. Group people into **families**
+  (Travelers tab) to settle up family to family instead.
 - **Exports:** a printable itinerary (save it as PDF) and a calendar file (.ics).
 - **Themes:** Auto (dark from 7 PM to 7 AM), Light or Dark, in four colour palettes.
 
@@ -120,7 +121,7 @@ npm run build        # or: npm run dev, alongside php artisan serve
 php artisan serve
 ```
 
-Tests (78 feature and unit tests covering every role's permissions, privacy rules, invites,
+Tests (81 feature and unit tests covering every role's permissions, privacy rules, invites,
 chat, exports, the AI planner and shared expenses):
 
 ```bash

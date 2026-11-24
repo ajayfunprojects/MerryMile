@@ -27,7 +27,9 @@ Product spec: the "Travel Planner: Initial Dev Plan" doc. UI reference: the "Mer
   back to labelled samples. Price lookups will go through `app/Services/Pricing` the same way.
 - Money is USD only in Phase 1, but keep the `currency` columns. Shared-expense math lives in
   `app/Support/Expenses.php` and works in whole cents so splits always add up; a minor's share is
-  charged to an adult on the trip. Expense rules are in `TripAccess` and tested in `ExpensesTest.php`.
+  charged to an adult on the trip. Families (`trip_families`, adults only; children follow the adult
+  they are billed to) combine balances and settle through a lead adult. Expense rules are in
+  `TripAccess` and tested in `ExpensesTest.php`.
 - Keep the prototype's look: reuse classes from `resources/css/app.css` rather than adding a CSS framework.
 - In-app actions use the `act()` helper (`resources/js/components/ui.tsx`), which keeps scroll and
   tab state. Server messages come back as a `toast` flash.

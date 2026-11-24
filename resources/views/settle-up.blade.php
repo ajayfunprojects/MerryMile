@@ -23,7 +23,23 @@
         {{ $trip->start_date->format('M j') }} to {{ $trip->end_date->format('M j, Y') }} · Amounts in {{ $m['currency'] }} · As of {{ now()->format('M j, Y') }}
     </div>
 
-    <h2>Balances</h2>
+    <h2>Balances{{ $byFamily ? ' by family' : '' }}</h2>
+    @if ($byFamily)
+    <table>
+        <thead><tr><th>Family</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Payments</th><th class="n">Balance</th></tr></thead>
+        <tbody>
+        @foreach ($m['familyBalances'] as $b)
+            <tr>
+                <td>{{ $b['name'] }} <span class="muted">({{ implode(', ', $b['members']) }})</span></td>
+                <td class="n">{{ $usd($b['paid']) }}</td>
+                <td class="n">{{ $usd($b['share']) }}</td>
+                <td class="n">{{ $usd($b['sent'] - $b['received']) }}</td>
+                <td class="n {{ $b['balance'] > 0 ? 'pos' : ($b['balance'] < 0 ? 'neg' : '') }}">{{ $b['balance'] > 0 ? 'Gets back ' : ($b['balance'] < 0 ? 'Owes ' : '') }}{{ $usd(abs($b['balance'])) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+    @else
     <table>
         <thead><tr><th>Traveler</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Payments</th><th class="n">Balance</th></tr></thead>
         <tbody>
@@ -38,10 +54,11 @@
         @endforeach
         </tbody>
     </table>
+    @endif
 
     <h2>Payments to settle up</h2>
-    @forelse ($m['transfers'] as $t)
-        <div>{{ $t['fromName'] }} pays {{ $t['toName'] }} <b>{{ $usd($t['amount']) }}</b></div>
+    @forelse ($byFamily ? $m['familyTransfers'] : $m['transfers'] as $t)
+        <div>{{ $t['fromName'] }} {{ $byFamily && str_starts_with($t['fromUnit'], 'f') ? 'pay' : 'pays' }} {{ $t['toName'] }} <b>{{ $usd($t['amount']) }}</b>@if ($byFamily && ($t['fromName'] !== $t['fromLead'] || $t['toName'] !== $t['toLead'])) <span class="muted">({{ $t['fromLead'] }} pays {{ $t['toLead'] }})</span>@endif</div>
     @empty
         <div class="muted">Everyone is settled up.</div>
     @endforelse

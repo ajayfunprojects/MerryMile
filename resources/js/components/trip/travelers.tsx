@@ -64,6 +64,109 @@ function AddSaved({ t }: { t: Trip }) {
     );
 }
 
+/** Group adults into families so the trip can settle expenses per family. Children follow the adult they are billed to. */
+function Families({ t }: { t: Trip }) {
+    const m = t.money!;
+    const edit = m.canFamilies && t.can.addExpense;
+    const [name, setName] = useState('');
+    const placed = new Set(m.families.flatMap((f) => f.adults.map((a) => a.id)));
+    const loose = m.adults.filter((a) => !placed.has(a.id));
+    if (!edit && !m.families.length) return null;
+    const assign = (id: number, family: number | null) => act('put', `/trips/${t.id}/travelers/${id}/family`, { family });
+    return (
+        <div className="card stack">
+            <div>
+                <h3>Families</h3>
+                <p className="xs muted">Group people who settle up together. Each family pays and gets paid through its lead. Children go with the adult they are billed to.</p>
+            </div>
+            {m.families.map((f) => (
+                <div key={f.id} className="family">
+                    <div className="row between" style={{ flexWrap: 'nowrap' }}>
+                        <b>{f.name}</b>
+                        {edit && (
+                            <MoreMenu
+                                label={'More for ' + f.name}
+                                items={[
+                                    {
+                                        label: 'Rename',
+                                        onSelect: () => {
+                                            const n = prompt('Family name', f.name);
+                                            if (n && n.trim()) act('patch', `/families/${f.id}`, { name: n.trim() });
+                                        },
+                                    },
+                                    { label: 'Remove family', danger: true, onSelect: () => confirm(`Remove ${f.name}? Its people will settle on their own.`) && act('delete', `/families/${f.id}`) },
+                                ]}
+                            />
+                        )}
+                    </div>
+                    <div className="wrap">
+                        {f.adults.map((a) => (
+                            <span key={a.id} className="chip on">
+                                {a.name}
+                                {a.id === f.lead && <span className="xs"> · lead</span>}
+                                {edit && (
+                                    <button type="button" className="chipx" aria-label={`Take ${a.name} out of ${f.name}`} onClick={() => assign(a.id, null)}>
+                                        ×
+                                    </button>
+                                )}
+                            </span>
+                        ))}
+                        {f.kids.map((k) => (
+                            <span key={k} className="chip dash">
+                                {k} · child
+                            </span>
+                        ))}
+                        {!f.adults.length && <span className="xs muted">No one yet</span>}
+                    </div>
+                    {edit && (
+                        <div className="row" style={{ gap: 8 }}>
+                            {loose.length > 0 && (
+                                <select className="famsel" aria-label={'Add someone to ' + f.name} value="" onChange={(e) => e.target.value && assign(Number(e.target.value), f.id)}>
+                                    <option value="">Add someone…</option>
+                                    {loose.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            {f.adults.length > 1 && (
+                                <select className="famsel" aria-label={'Lead for ' + f.name} value={f.lead ?? ''} onChange={(e) => act('patch', `/families/${f.id}`, { lead: Number(e.target.value) })}>
+                                    {f.adults.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                            Lead: {a.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ))}
+            {loose.length > 0 && m.families.length > 0 && <p className="xs muted">On their own: {loose.map((a) => a.name).join(', ')}</p>}
+            {edit && (
+                <form
+                    className="row"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (name.trim()) act('post', `/trips/${t.id}/families`, { name: name.trim() }, { onSuccess: () => setName('') });
+                    }}
+                >
+                    <div className="grow" style={{ minWidth: 180 }}>
+                        <label className="sr" htmlFor="fam-new">
+                            New family name
+                        </label>
+                        <input id="fam-new" placeholder="New family, e.g. The Morgans" value={name} onChange={(e) => setName(e.target.value)} />
+                    </div>
+                    <button className="btn sm" disabled={!name.trim()}>
+                        Add family
+                    </button>
+                </form>
+            )}
+        </div>
+    );
+}
+
 export function TravelersTab({ trip: t }: { trip: Trip }) {
     const toast = useToast();
     const v = !t.can.personal;
@@ -164,6 +267,7 @@ export function TravelersTab({ trip: t }: { trip: Trip }) {
                     </div>
                 </div>
             ))}
+            {t.money && <Families t={t} />}
             {t.can.admin && <AddSaved t={t} />}
             {t.can.admin && (
                 <details className="ed">

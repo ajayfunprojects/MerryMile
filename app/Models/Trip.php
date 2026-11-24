@@ -56,6 +56,11 @@ class Trip extends Model
         return $this->hasMany(Expense::class)->orderByDesc('spent_on')->orderByDesc('id');
     }
 
+    public function families(): HasMany
+    {
+        return $this->hasMany(TripFamily::class)->orderBy('id');
+    }
+
     public function settlements(): HasMany
     {
         return $this->hasMany(Settlement::class)->orderBy('paid_at');

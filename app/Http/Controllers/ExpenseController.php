@@ -61,7 +61,7 @@ class ExpenseController extends Controller
     public function pay(Request $request, Trip $trip): RedirectResponse
     {
         $access = TripAccess::for($trip, $request->user())->abortUnless('add-expense');
-        $adults = $this->adultsOnTrip($trip);
+        $adults = Expenses::adults($trip);
         $data = $request->validate([
             'from' => ['required', 'integer', Rule::in($adults)],
             'to' => ['required', 'integer', Rule::in($adults), 'different:from'],
@@ -95,7 +95,7 @@ class ExpenseController extends Controller
         TripAccess::for($trip, $request->user())->abortUnless('money');
         $tt = $trip->tripTravelers()->where('traveler_id', $traveler->id)->firstOrFail();
         abort_unless($traveler->isMinor(), 422, 'Only children are billed to an adult.');
-        $data = $request->validate(['adult' => ['required', 'integer', Rule::in($this->adultsOnTrip($trip))]]);
+        $data = $request->validate(['adult' => ['required', 'integer', Rule::in(Expenses::adults($trip))]]);
         DB::transaction(function () use ($trip, $tt, $traveler, $data) {
             $tt->update(['billed_to_traveler_id' => $data['adult']]);
             DB::table('expense_shares')->where('traveler_id', $traveler->id)
@@ -108,12 +108,6 @@ class ExpenseController extends Controller
     }
 
     // ---------- helpers ----------
-
-    /** @return int[] adult traveler ids on this trip */
-    private function adultsOnTrip(Trip $trip): array
-    {
-        return array_values(array_keys(array_filter(Expenses::billing($trip), fn ($payer, $id) => $payer === $id, ARRAY_FILTER_USE_BOTH)));
-    }
 
     private function validated(Request $request, Trip $trip, TripAccess $access): array
     {
@@ -135,7 +129,7 @@ class ExpenseController extends Controller
         // Who paid: yourself, unless you are the Treasurer or an Admin recording it for someone else.
         $self = $access->selfTravelerId();
         $payer = (int) ($data['paid_by'] ?? $self);
-        $adults = $this->adultsOnTrip($trip);
+        $adults = Expenses::adults($trip);
         if (! $payer || ! in_array($payer, $adults, true)) {
             throw ValidationException::withMessages(['paid_by' => 'Choose an adult on this trip as the person who paid.']);
         }

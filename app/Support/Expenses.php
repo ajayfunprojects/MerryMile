@@ -72,6 +72,12 @@ class Expenses
         return $out;
     }
 
+    /** @return int[] adult traveler ids on the trip (the people who can pay, owe and join a family) */
+    public static function adults(Trip $trip): array
+    {
+        return array_values(array_keys(array_filter(self::billing($trip), fn ($payer, $id) => $payer === $id, ARRAY_FILTER_USE_BOTH)));
+    }
+
     /**
      * Per adult: what they paid, the shares charged to them (their minors included), payments
      * sent and received, and the balance. Positive balance = the group owes them.
@@ -159,6 +165,89 @@ class Expenses
         }
 
         return $out;
+    }
+
+    /**
+     * Families on the trip: adult members, children (who follow the adult they are billed to)
+     * and the lead, who pays and receives for the family. A lead who left falls back to the
+     * family's first adult.
+     *
+     * @return array<int, array{id:int, name:string, adults:int[], lead:?int, kids:int[]}>
+     */
+    public static function families(Trip $trip): array
+    {
+        $trip->loadMissing(['families', 'tripTravelers.traveler.guardians']);
+        $billing = self::billing($trip);
+        $familyOf = $trip->tripTravelers->filter(fn ($tt) => $tt->family_id && ($billing[$tt->traveler_id] ?? null) === $tt->traveler_id)
+            ->sortBy('id')->mapWithKeys(fn ($tt) => [$tt->traveler_id => $tt->family_id])->all();
+        $out = [];
+        foreach ($trip->families as $f) {
+            $adults = array_keys(array_filter($familyOf, fn ($fid) => $fid === $f->id));
+            $out[$f->id] = [
+                'id' => $f->id,
+                'name' => $f->name,
+                'adults' => $adults,
+                'lead' => in_array($f->lead_traveler_id, $adults, true) ? $f->lead_traveler_id : ($adults[0] ?? null),
+                'kids' => array_keys(array_filter($billing, fn ($payer, $tid) => $payer !== $tid && in_array($payer, $adults, true), ARRAY_FILTER_USE_BOTH)),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Balances combined per family; anyone not in a family stays a unit of their own.
+     * Each unit has a key ("f3" or "t12"), a name and the traveler who pays or receives for it.
+     *
+     * @return Collection<int, array{key:string, family:?int, name:string, lead:int, members:string[], paid:int, share:int, sent:int, received:int, balance:int}>
+     */
+    public static function familyBalances(Trip $trip): Collection
+    {
+        $people = self::balances($trip)->keyBy('id');
+        $families = self::families($trip);
+        $units = [];
+        $inFamily = [];
+        foreach ($families as $f) {
+            if (! $f['adults']) {
+                continue;
+            }
+            $rows = collect($f['adults'])->map(fn ($id) => $people[$id] ?? null)->filter();
+            $units[] = [
+                'key' => 'f'.$f['id'],
+                'family' => $f['id'],
+                'name' => $f['name'],
+                'lead' => $f['lead'],
+                'members' => $rows->pluck('first')->merge($rows->flatMap(fn ($r) => $r['minors']))->values()->all(), // adults, then children
+            ] + collect(['paid', 'share', 'sent', 'received', 'balance'])->mapWithKeys(fn ($k) => [$k => (int) $rows->sum($k)])->all();
+            $inFamily = array_merge($inFamily, $f['adults']);
+        }
+        foreach ($people as $id => $r) {
+            if (in_array($id, $inFamily, true)) {
+                continue;
+            }
+            $units[] = ['key' => 't'.$id, 'family' => null, 'name' => $r['first'], 'lead' => $id, 'members' => array_merge([$r['first']], $r['minors'])]
+                + array_intersect_key($r, array_flip(['paid', 'share', 'sent', 'received', 'balance']));
+        }
+
+        return collect($units);
+    }
+
+    /**
+     * Fewest payments between families (and people not in one), paid by and to each unit's lead.
+     *
+     * @return array<int, array{from:int, to:int, amount:int, fromUnit:string, toUnit:string}>
+     */
+    public static function familyTransfers(Collection $units): array
+    {
+        $byKey = $units->keyBy('key');
+
+        return array_map(fn ($t) => [
+            'from' => $byKey[$t['from']]['lead'],
+            'to' => $byKey[$t['to']]['lead'],
+            'amount' => $t['amount'],
+            'fromUnit' => $t['from'],
+            'toUnit' => $t['to'],
+        ], self::transfers($units->map(fn ($u) => ['id' => $u['key'], 'balance' => $u['balance']])));
     }
 
     /** The balance of one traveler on a trip, in cents (0 when they never took part). */

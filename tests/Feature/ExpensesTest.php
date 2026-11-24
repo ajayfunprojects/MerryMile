@@ -204,3 +204,87 @@ it('makes expenses read-only on an archived trip but keeps them visible', functi
     $this->actingAs($r['admin'])->delete('/expenses/'.Expense::first()->id)->assertForbidden();
     $this->actingAs($r['adult'])->get("/trips/{$trip->id}")->assertInertia(fn (Assert $p) => $p->where('trip.money.expenses.0.canManage', false)->where('trip.can.addExpense', false));
 });
+
+// ---------- Families ----------
+
+/** Morgans: Alex + Sam Rivera. Lees: Jordan Lee (lead) + the adult user. Planner settles alone. */
+function withFamilies(array $r): array
+{
+    $trip = $r['trip'];
+    $admin = $r['admin'];
+    test()->actingAs($admin)->post("/trips/{$trip->id}/families", ['name' => 'The Morgans', 'members' => [tid($trip, 'Alex'), tid($trip, 'Sam Rivera')]])->assertSessionHasNoErrors();
+    test()->actingAs($admin)->post("/trips/{$trip->id}/families", ['name' => 'The Lees', 'members' => [tid($trip, 'Jordan Lee'), $r['adult']->selfTraveler->id]])->assertSessionHasNoErrors();
+
+    return $trip->families()->get()->keyBy('name')->all();
+}
+
+it('lets only the Treasurer and Trip Admin manage families and the settle-up default', function () {
+    $r = tripWithRoles();
+    $trip = $r['trip'];
+    $alex = tid($trip, 'Alex');
+    foreach (['planner', 'adult', 'viewer', 'outsider'] as $who) {
+        $this->actingAs($r[$who])->post("/trips/{$trip->id}/families", ['name' => "By $who"])->assertForbidden();
+        $this->actingAs($r[$who])->patch("/trips/{$trip->id}/settle-by", ['by' => 'family'])->assertForbidden();
+    }
+    $treasurer = User::factory()->create();
+    $trip->members()->create(['user_id' => $treasurer->id, 'role' => 'adult_traveler', 'addons' => ['treasurer']]);
+    $this->actingAs($treasurer)->post("/trips/{$trip->id}/families", ['name' => 'The Morgans'])->assertSessionHasNoErrors();
+    $f = $trip->families()->first();
+
+    $this->actingAs($r['adult'])->put("/trips/{$trip->id}/travelers/{$alex}/family", ['family' => $f->id])->assertForbidden();
+    $this->actingAs($r['admin'])->put("/trips/{$trip->id}/travelers/{$alex}/family", ['family' => $f->id])->assertRedirect();
+    expect($f->fresh()->lead_traveler_id)->toBe($alex);
+
+    $this->actingAs($r['planner'])->patch("/families/{$f->id}", ['name' => 'Hacked'])->assertForbidden();
+    $this->actingAs($r['admin'])->patch("/families/{$f->id}", ['name' => 'Morgan family'])->assertRedirect();
+    $this->actingAs($r['admin'])->patch("/trips/{$trip->id}/settle-by", ['by' => 'family'])->assertRedirect();
+    expect($f->fresh()->name)->toBe('Morgan family')->and($trip->fresh()->settle_by)->toBe('family')
+        ->and(AuditLog::where('action', 'family.created')->exists())->toBeTrue();
+});
+
+it('combines balances per family and settles between family leads', function () {
+    $r = tripWithRoles();
+    $trip = $r['trip'];
+    $riley = tid($trip, 'Riley'); // a child, billed to Alex
+    $fam = withFamilies($r);
+    $people = everyone($trip);
+    $this->actingAs($r['admin'])->post("/trips/{$trip->id}/expenses", expense(['title' => 'Villa', 'amount' => 480, 'travelers' => $people]))->assertSessionHasNoErrors();
+    $this->actingAs($r['adult'])->post("/trips/{$trip->id}/expenses", expense(['title' => 'Boat', 'amount' => 120, 'travelers' => $people]))->assertSessionHasNoErrors();
+
+    // 6 people: Villa $80 each, Boat $20 each. Alex pays for himself and Riley.
+    $units = Expenses::familyBalances($trip->fresh())->keyBy('key');
+    $planner = $r['planner']->selfTraveler->id;
+    expect($units['f'.$fam['The Morgans']->id])->balance->toBe(48000 - 30000)->members->toContain('Riley')->lead->toBe(tid($trip, 'Alex'))
+        ->and($units['f'.$fam['The Lees']->id])->balance->toBe(12000 - 20000)->lead->toBe(tid($trip, 'Jordan Lee'))
+        ->and($units['t'.$planner]['balance'])->toBe(-10000)
+        ->and($units->sum('balance'))->toBe(0);
+
+    $t = Expenses::familyTransfers($units->values());
+    expect($t)->toHaveCount(2)
+        ->and(collect($t)->firstWhere('from', tid($trip, 'Jordan Lee')))->to->toBe(tid($trip, 'Alex'))->amount->toBe(8000)
+        ->and(collect($t)->firstWhere('from', $planner))->amount->toBe(10000);
+
+    // Anyone in the Lees may mark the Lees' payment; the planner may not.
+    $this->actingAs($r['planner'])->post("/trips/{$trip->id}/settlements", ['from' => tid($trip, 'Jordan Lee'), 'to' => tid($trip, 'Alex'), 'amount' => 80])->assertForbidden();
+    $this->actingAs($r['adult'])->post("/trips/{$trip->id}/settlements", ['from' => tid($trip, 'Jordan Lee'), 'to' => tid($trip, 'Alex'), 'amount' => 80])->assertRedirect();
+    expect(Expenses::familyBalances($trip->fresh())->firstWhere('key', 'f'.$fam['The Lees']->id)['balance'])->toBe(0);
+
+    $this->actingAs($r['adult'])->get("/trips/{$trip->id}")->assertInertia(fn (Assert $p) => $p
+        ->where('trip.money.families.0.name', 'The Morgans')->where('trip.money.settleBy', 'person')->has('trip.money.familyTransfers', 1));
+});
+
+it('keeps children out of families and falls back to another lead when the lead leaves', function () {
+    $r = tripWithRoles();
+    $trip = $r['trip'];
+    $riley = tid($trip, 'Riley');
+    $fam = withFamilies($r);
+    $morgans = $fam['The Morgans'];
+
+    $this->actingAs($r['admin'])->put("/trips/{$trip->id}/travelers/{$riley}/family", ['family' => $morgans->id])->assertStatus(422);
+
+    $this->actingAs($r['admin'])->put("/trips/{$trip->id}/travelers/".tid($trip, 'Alex').'/family', ['family' => null])->assertRedirect();
+    expect(Expenses::families($trip->fresh())[$morgans->id]['lead'])->toBe(tid($trip, 'Sam Rivera'));
+
+    $this->actingAs($r['admin'])->delete("/families/{$morgans->id}")->assertRedirect();
+    expect($trip->tripTravelers()->where('family_id', $morgans->id)->count())->toBe(0);
+});

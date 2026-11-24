@@ -200,10 +200,30 @@ class TripPresenter
         $billing = Expenses::billing($trip);
         $self = $access->selfTravelerId();
 
+        $units = Expenses::familyBalances($trip);
+        $unitName = $units->pluck('name', 'key')->all();
+
         return [
             'currency' => 'USD',
             'me' => $self,
             'canSettle' => $access->canMoney(),
+            'canFamilies' => $access->canManageFamilies(),
+            'settleBy' => $trip->settle_by ?? 'person',
+            'families' => array_values(array_map(fn ($f) => [
+                'id' => $f['id'],
+                'name' => $f['name'],
+                'lead' => $f['lead'],
+                'adults' => array_map(fn ($id) => ['id' => $id, 'name' => $name($id)], $f['adults']),
+                'kids' => array_map($name, $f['kids']),
+            ], Expenses::families($trip))),
+            'familyBalances' => $units->map(fn ($u) => $u + ['leadName' => $name($u['lead'])])->all(),
+            'familyTransfers' => array_map(fn ($t) => $t + [
+                'fromName' => $unitName[$t['fromUnit']] ?? $name($t['from']),
+                'toName' => $unitName[$t['toUnit']] ?? $name($t['to']),
+                'fromLead' => $name($t['from']),
+                'toLead' => $name($t['to']),
+                'canMark' => $access->canMarkPayment($t['from'], $t['to']),
+            ], Expenses::familyTransfers($units)),
             'expenses' => $trip->expenses->map(fn ($e) => [
                 'id' => $e->id,
                 'title' => $e->title,

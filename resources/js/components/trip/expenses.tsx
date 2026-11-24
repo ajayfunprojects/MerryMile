@@ -194,26 +194,71 @@ function ExpenseRow({ e, onEdit }: { e: Expense; onEdit: () => void }) {
 }
 
 function SettleUp({ t, m }: { t: Trip; m: Money }) {
+    const hasFamilies = m.families.some((f) => f.adults.length > 0);
+    const [by, setBy] = useState<'person' | 'family'>(hasFamilies ? m.settleBy : 'person');
+    const family = by === 'family' && hasFamilies;
+    const myFamily = m.families.find((f) => f.adults.some((a) => a.id === m.me));
+    // One list of rows and payments, whichever way the group settles.
+    const rows = family
+        ? m.familyBalances.map((u) => ({
+              key: u.key,
+              title: u.name,
+              mine: u.family ? u.family === myFamily?.id : u.lead === m.me,
+              sub: (u.family ? u.members.join(', ') + ' · ' : u.members.length > 1 ? 'incl. ' + u.members.slice(1).join(', ') + ' · ' : '') + `Paid ${usd(u.paid)} · Share ${usd(u.share)}`,
+              moved: u.sent || u.received,
+              balance: u.balance,
+          }))
+        : m.balances.map((b) => ({
+              key: 't' + b.id,
+              title: b.first,
+              mine: b.id === m.me,
+              sub: (b.minors.length ? 'incl. ' + b.minors.join(', ') + ' · ' : '') + `Paid ${usd(b.paid)} · Share ${usd(b.share)}`,
+              moved: b.sent || b.received,
+              balance: b.balance,
+          }));
+    const pays = family
+        ? m.familyTransfers.map((x) => ({
+              ...x,
+              key: x.fromUnit + '-' + x.toUnit,
+              family: x.fromUnit.startsWith('f'),
+              via: x.fromUnit.startsWith('f') || x.toUnit.startsWith('f') ? `${x.fromLead} pays ${x.toLead}` : '',
+          }))
+        : m.transfers.map((x) => ({ ...x, key: x.from + '-' + x.to, family: false, via: '' }));
+    const youPay = (x: { from: number }) => !family && x.from === m.me;
+    const youGet = (x: { to: number }) => !family && x.to === m.me;
     return (
         <div className="stack">
             <div className="card stack">
                 <div className="row between">
                     <h3>Settle up</h3>
-                    <a className="btn ghost sm" href={`/trips/${t.id}/settle-up`} target="_blank" rel="noopener">
+                    <a className="btn ghost sm" href={`/trips/${t.id}/settle-up?by=${family ? 'family' : 'person'}`} target="_blank" rel="noopener">
                         Print summary
                     </a>
                 </div>
+                {hasFamilies && (
+                    <div className="row between" style={{ gap: 8 }}>
+                        <div className="seg" role="group" aria-label="Settle up by">
+                            <button type="button" aria-pressed={!family} onClick={() => setBy('person')}>
+                                By person
+                            </button>
+                            <button type="button" aria-pressed={family} onClick={() => setBy('family')}>
+                                By family
+                            </button>
+                        </div>
+                        {m.canFamilies && t.can.addExpense && by !== m.settleBy && (
+                            <button type="button" className="linkish xs" onClick={() => act('patch', `/trips/${t.id}/settle-by`, { by })}>
+                                Make this the trip default
+                            </button>
+                        )}
+                    </div>
+                )}
                 <div className="balances">
-                    {m.balances.map((b) => (
-                        <div key={b.id} className="balrow">
+                    {rows.map((b) => (
+                        <div key={b.key} className="balrow">
                             <div className="grow" style={{ minWidth: 0 }}>
-                                <b>{b.first}</b>
-                                {b.id === m.me && <span className="muted"> (you)</span>}
-                                {b.minors.length > 0 && <span className="xs muted"> · incl. {b.minors.join(', ')}</span>}
-                                <div className="xs muted">
-                                    Paid {usd(b.paid)} · Share {usd(b.share)}
-                                    {b.sent || b.received ? ' · Payments ' + usd(b.sent - b.received) : ''}
-                                </div>
+                                <b>{b.title}</b>
+                                {b.mine && <span className="muted"> (you)</span>}
+                                <div className="xs muted">{b.sub}</div>
                             </div>
                             <div className={'balamt ' + (b.balance > 0 ? 'pos' : b.balance < 0 ? 'neg' : 'muted')}>
                                 {b.balance === 0 ? (
@@ -228,15 +273,20 @@ function SettleUp({ t, m }: { t: Trip; m: Money }) {
                         </div>
                     ))}
                 </div>
-                {m.balances.some((b) => b.sent || b.received) && <p className="xs muted">Balances include payments already made.</p>}
+                {rows.some((b) => b.moved) && <p className="xs muted">Balances include payments already made.</p>}
             </div>
             {m.expenses.length > 0 && (
                 <div className="card stack">
-                    <h3>{m.transfers.length ? `${m.transfers.length} ${m.transfers.length === 1 ? 'payment' : 'payments'} to square up` : 'Everyone is settled up'}</h3>
-                    {m.transfers.map((x) => (
-                        <div key={x.from + '-' + x.to} className="row between payrow">
+                    <h3>{pays.length ? `${pays.length} ${pays.length === 1 ? 'payment' : 'payments'} to square up` : 'Everyone is settled up'}</h3>
+                    {pays.map((x) => (
+                        <div key={x.key} className="row between payrow">
                             <span className="sm">
-                                <b>{x.from === m.me ? 'You' : x.fromName}</b> {x.from === m.me ? 'pay' : 'pays'} <b>{x.to === m.me ? 'you' : x.toName}</b>
+                                <b>{youPay(x) ? 'You' : x.fromName}</b> {youPay(x) || x.family ? 'pay' : 'pays'} <b>{youGet(x) ? 'you' : x.toName}</b>
+                                {x.via && (
+                                    <span className="xs muted" style={{ display: 'block' }}>
+                                        {x.via}
+                                    </span>
+                                )}
                             </span>
                             <span className="row" style={{ gap: 8 }}>
                                 <b>{usd(x.amount)}</b>

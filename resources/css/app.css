@@ -293,3 +293,7 @@ details.fold>summary h3::after{content:"›";display:inline-block;margin-left:8p
 .splitrow{padding:8px 12px}.shareamt{width:110px;height:38px;min-height:38px;text-align:right}
 .balrow{display:flex;align-items:center;gap:10px;padding:10px 0}.balrow+.balrow{border-top:1px solid var(--line)}
 .balamt{text-align:right;display:flex;flex-direction:column;align-items:flex-end;font-variant-numeric:tabular-nums;white-space:nowrap}.balamt b{font-size:16px}
+/* Families on the Travelers tab */
+.family{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.family .more-btn{border-color:transparent;color:var(--muted)}
+.famsel{width:auto;min-width:170px;height:38px;min-height:38px;font-size:13px;padding:4px 10px}

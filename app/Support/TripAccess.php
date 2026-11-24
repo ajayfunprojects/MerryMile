@@ -102,15 +102,33 @@ class TripAccess
         return $this->canAddExpense() && ($expense->created_by_user_id === $this->user?->id || ($self && $expense->paid_by_traveler_id === $self));
     }
 
-    /** Mark a payment as paid: Treasurer and Admin any; others only ones they send or receive. */
+    /**
+     * Mark a payment as paid: Treasurer and Admin any; others only ones they send or receive,
+     * including ones their family's lead sends or receives for the family.
+     */
     public function canMarkPayment(int $fromTravelerId, int $toTravelerId): bool
     {
         if ($this->canMoney()) {
             return true;
         }
         $self = $this->user?->selfTraveler?->id;
+        if (! $this->canAddExpense() || $self === null) {
+            return false;
+        }
+        $mine = [$self];
+        foreach (Expenses::families($this->trip) as $f) {
+            if (in_array($self, $f['adults'], true) && $f['lead']) {
+                $mine[] = $f['lead'];
+            }
+        }
 
-        return $this->canAddExpense() && $self !== null && in_array($self, [$fromTravelerId, $toTravelerId], true);
+        return (bool) array_intersect($mine, [$fromTravelerId, $toTravelerId]);
+    }
+
+    /** Group travelers into families and choose how the trip settles up: Treasurer and Admin. */
+    public function canManageFamilies(): bool
+    {
+        return $this->canMoney();
     }
 
     /** May this user edit a given traveler's flights on this trip? */
@@ -141,6 +159,7 @@ class TripAccess
             'chat' => $this->canChat(),
             'expenses' => $this->canSeeExpenses(),
             'add-expense' => $this->canAddExpense(),
+            'families' => $this->canManageFamilies(),
         };
         abort_unless($ok, 403, 'You do not have permission to do that on this trip.');
 

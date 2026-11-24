@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\ItineraryController;
 use App\Http\Controllers\LogisticsController;
 use App\Http\Controllers\MemberController;
@@ -87,6 +88,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/trips/{trip}/settlements', [ExpenseController::class, 'pay']);
     Route::delete('/settlements/{settlement}', [ExpenseController::class, 'undoPayment']);
     Route::patch('/trips/{trip}/travelers/{traveler}/billing', [ExpenseController::class, 'billing']);
+    Route::post('/trips/{trip}/families', [FamilyController::class, 'store']);
+    Route::patch('/families/{family}', [FamilyController::class, 'update']);
+    Route::delete('/families/{family}', [FamilyController::class, 'destroy']);
+    Route::put('/trips/{trip}/travelers/{traveler}/family', [FamilyController::class, 'assign']);
+    Route::patch('/trips/{trip}/settle-by', [FamilyController::class, 'settleBy']);
 
     Route::patch('/trips/{trip}/members/{member}', [MemberController::class, 'updateMember']);
     Route::delete('/trips/{trip}/members/{member}', [MemberController::class, 'removeMember']);
