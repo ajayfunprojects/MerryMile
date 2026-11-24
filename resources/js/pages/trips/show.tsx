@@ -4,7 +4,7 @@ import { Shell } from '../../components/layout';
 import { ChatTab } from '../../components/trip/chat';
 import { TripHeader } from '../../components/trip/header';
 import { ItineraryTab } from '../../components/trip/itinerary';
-import { scrollToDay, TABS } from '../../components/trip/shared';
+import { scrollToDay, tripTabs } from '../../components/trip/shared';
 import { StaysTab } from '../../components/trip/stays';
 import { TodayTab } from '../../components/trip/today';
 import { TravelTab } from '../../components/trip/travel';
@@ -13,7 +13,7 @@ import { VisasTab } from '../../components/trip/visas';
 import type { Trip } from '../../types';
 
 export default function ShowTrip({ trip, tab: initialTab }: { trip: Trip; tab: string }) {
-    const [tab, setTabState] = useState(TABS.some(([k]) => k === initialTab) ? initialTab : 'itinerary');
+    const [tab, setTabState] = useState(tripTabs(trip).some(([k]) => k === initialTab) ? initialTab : 'itinerary');
     const setTab = (k: string) => {
         setTabState(k);
         const url = new URL(window.location.href);

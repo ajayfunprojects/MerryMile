@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { hotelOpts } from '../../lib/data';
 import { D, fd, money, nightsBetween } from '../../lib/util';
 import type { Stay, Trip } from '../../types';
-import { act, Avs, Chip, Field, Modal } from '../ui';
+import { act, Avs, Chip, Field, Modal, MoreMenu } from '../ui';
 
 function CompareModal({ t, city, stay, onClose }: { t: Trip; city: string; stay: Stay | null; onClose: () => void }) {
     const opts = hotelOpts(city);
@@ -70,40 +70,179 @@ function CompareModal({ t, city, stay, onClose }: { t: Trip; city: string; stay:
     );
 }
 
-function StayDetails({ s }: { s: Stay }) {
+function StayEditor({ s, onClose }: { s: Stay; onClose: () => void }) {
     const [f, setF] = useState({ name: s.name, kind: s.kind, from: s.from, to: s.to, status: s.status, conf: s.conf || '' });
     return (
-        <details className="ed">
-            <summary className="btn ghost sm">Edit details or mark booked</summary>
-            <div className="g3">
-                <Field id={'sn-' + s.id} label="Name">
-                    <input id={'sn-' + s.id} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-                </Field>
-                <Field id={'sf-' + s.id} label="Check in">
-                    <input id={'sf-' + s.id} type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} />
-                </Field>
-                <Field id={'st-' + s.id} label="Check out">
-                    <input id={'st-' + s.id} type="date" value={f.to} min={f.from} onChange={(e) => setF({ ...f, to: e.target.value })} />
-                </Field>
-                <Field id={'ss-' + s.id} label="Status">
-                    <select id={'ss-' + s.id} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as Stay['status'] })}>
-                        <option value="planned">Planned</option>
-                        <option value="booked">Booked</option>
-                    </select>
-                </Field>
-                <Field id={'sc2-' + s.id} label="Confirmation numbers">
-                    <input id={'sc2-' + s.id} value={f.conf} onChange={(e) => setF({ ...f, conf: e.target.value })} />
-                </Field>
-                <div style={{ alignSelf: 'end' }} className="row">
-                    <button className="btn" onClick={() => act('patch', `/stays/${s.id}`, { ...f, conf: f.conf || null })}>
-                        Save
-                    </button>
-                    <button className="btn ghost" onClick={() => confirm('Remove this stay?') && act('delete', `/stays/${s.id}`)}>
-                        Remove
-                    </button>
+        <div className="g3">
+            <Field id={'sn-' + s.id} label="Name">
+                <input id={'sn-' + s.id} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoFocus />
+            </Field>
+            <Field id={'sf-' + s.id} label="Check in">
+                <input id={'sf-' + s.id} type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} />
+            </Field>
+            <Field id={'st-' + s.id} label="Check out">
+                <input id={'st-' + s.id} type="date" value={f.to} min={f.from} onChange={(e) => setF({ ...f, to: e.target.value })} />
+            </Field>
+            <Field id={'ss-' + s.id} label="Status">
+                <select id={'ss-' + s.id} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as Stay['status'] })}>
+                    <option value="planned">Planned</option>
+                    <option value="booked">Booked</option>
+                </select>
+            </Field>
+            <Field id={'sc2-' + s.id} label="Confirmation numbers">
+                <input id={'sc2-' + s.id} value={f.conf} onChange={(e) => setF({ ...f, conf: e.target.value })} />
+            </Field>
+            <div style={{ alignSelf: 'end' }} className="row">
+                <button className="btn" onClick={() => act('patch', `/stays/${s.id}`, { ...f, conf: f.conf || null }, { onSuccess: onClose })}>
+                    Save
+                </button>
+                <button className="btn ghost" onClick={onClose}>
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/** One stay: a single summary line that opens to show rooms, cost and confirmation. */
+function StayCard({ t, s, onCompare }: { t: Trip; s: Stay; onCompare: () => void }) {
+    const [open, setOpen] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const tr = (id: string) => t.travelers.find((p) => String(p.id) === id);
+    const nights = nightsBetween(s.from, s.to);
+    const menu = t.can.edit
+        ? [
+              { label: 'Edit details', onSelect: () => (setOpen(true), setEditing(true)) },
+              ...(s.status !== 'booked'
+                  ? [
+                        { label: 'Mark booked', onSelect: () => act('patch', `/stays/${s.id}`, { status: 'booked' }) },
+                        { label: 'Compare alternatives', onSelect: onCompare },
+                    ]
+                  : []),
+              { label: 'Remove stay', danger: true, onSelect: () => confirm('Remove this stay?') && act('delete', `/stays/${s.id}`) },
+          ]
+        : [];
+    return (
+        <section className="card stack staycard">
+            <div className="row between" style={{ flexWrap: 'nowrap' }}>
+                <button type="button" className="staysum" aria-expanded={open} onClick={() => setOpen(!open)}>
+                    <span className="dbadge" aria-hidden="true">
+                        <small>{D(s.from).toLocaleDateString('en-US', { month: 'short' })}</small>
+                        <b>{D(s.from).getDate()}</b>
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                        <b className="staytitle">{s.name}</b>
+                        <span className="muted sm" style={{ display: 'block' }}>
+                            {s.city} · {fd(s.from, { month: 'short', day: 'numeric' })} to {fd(s.to, { month: 'short', day: 'numeric' })} · {nights} {nights === 1 ? 'night' : 'nights'} · {s.rooms}{' '}
+                            {s.rooms === 1 ? 'room' : 'rooms'}
+                        </span>
+                    </span>
+                    <span className="chev" aria-hidden="true">
+                        ›
+                    </span>
+                </button>
+                <div className="row" style={{ flex: 'none', gap: 4 }}>
+                    <Chip cls={s.status === 'booked' ? 'ok' : 'dash'}>{s.status === 'booked' ? 'Booked' : 'Planned'}</Chip>
+                    <MoreMenu label={'More for ' + s.name} items={menu} />
                 </div>
             </div>
-        </details>
+            {open && (
+                <div className="stack">
+                    {editing && <StayEditor s={s} onClose={() => setEditing(false)} />}
+                    {t.can.personal && (
+                        <div className="sm">
+                            <span className="muted">Confirmation:</span> {s.conf || 'Not entered'}
+                        </div>
+                    )}
+                    {t.can.personal && (
+                        <div className="stack" style={{ gap: 10 }}>
+                            <div className="row between">
+                                <div>
+                                    <h3 className="sm">Who sleeps where</h3>
+                                    <p className="xs muted">Priced per room. Move people between rooms to choose who shares.</p>
+                                </div>
+                                {t.can.edit && (
+                                    <button className="btn ghost sm" onClick={() => act('post', `/stays/${s.id}/rooms`)}>
+                                        Add a room
+                                    </button>
+                                )}
+                            </div>
+                            <div className="rooms">
+                                {Array.from({ length: s.rooms }, (_, r) => {
+                                    const here = t.travelers.filter((p) => s.assign[String(p.id)] === r);
+                                    const others = t.travelers.filter((p) => s.assign[String(p.id)] !== r);
+                                    return (
+                                        <div key={r} className="room">
+                                            <b className="sm">Room {r + 1}</b>
+                                            {here.length ? (
+                                                <>
+                                                    <Avs people={here.map((p) => ({ key: p.key, name: p.name }))} />
+                                                    <span className="xs muted">{here.map((p) => p.first).join(' and ')}</span>
+                                                </>
+                                            ) : (
+                                                <span className="xs muted">Empty</span>
+                                            )}
+                                            {t.can.edit && others.length > 0 && (
+                                                <select
+                                                    className="roomsel"
+                                                    aria-label={'Move someone to room ' + (r + 1)}
+                                                    value=""
+                                                    onChange={(e) => e.target.value && act('patch', `/stays/${s.id}/rooms`, { traveler_id: Number(e.target.value), room: r })}
+                                                >
+                                                    <option value="">Move here…</option>
+                                                    {others.map((p) => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.first}
+                                                            {s.assign[String(p.id)] === undefined ? ' (no room yet)' : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {t.travelers.some((p) => s.assign[String(p.id)] === undefined && tr(String(p.id))) && (
+                                <p className="xs muted">
+                                    No room yet:{' '}
+                                    {t.travelers
+                                        .filter((p) => s.assign[String(p.id)] === undefined)
+                                        .map((p) => p.first)
+                                        .join(', ')}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                    <div className="cost">
+                        {s.actual != null ? (
+                            <b>Actual total {money(s.actual)}</b>
+                        ) : s.hasActual ? (
+                            <b>Actual cost entered</b>
+                        ) : (
+                            <>
+                                <span className="sm">Estimate: [PRICE RANGE] per room per night</span>
+                                <span className="xs muted">Disappears when you enter the actual cost.</span>
+                            </>
+                        )}
+                        {t.can.money && (
+                            <div className="fld" style={{ marginTop: 8, maxWidth: 280 }}>
+                                <label htmlFor={'sc-' + s.id}>Actual total, USD</label>
+                                <input
+                                    id={'sc-' + s.id}
+                                    type="number"
+                                    min="0"
+                                    defaultValue={s.actual ?? ''}
+                                    onBlur={(e) => {
+                                        const v = e.target.value === '' ? null : Number(e.target.value);
+                                        if (v !== s.actual) act('patch', `/stays/${s.id}/cost`, { actual: v });
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </section>
     );
 }
 
@@ -113,7 +252,6 @@ export function StaysTab({ trip: t }: { trip: Trip }) {
     const tot = t.stays.reduce((n, x) => n + nightsBetween(x.from, x.to), 0);
     const booked = t.stays.filter((x) => x.status === 'booked').length;
     const spent = t.stays.reduce((n, x) => n + (x.actual ?? 0), 0);
-    const tr = (id: string) => t.travelers.find((p) => String(p.id) === id);
     return (
         <div className="stack">
             <div className="stats">
@@ -137,124 +275,7 @@ export function StaysTab({ trip: t }: { trip: Trip }) {
                 </div>
             </div>
             {t.stays.map((s) => (
-                <section key={s.id} className="card stack">
-                    <div className="row between">
-                        <div className="row" style={{ flexWrap: 'nowrap' }}>
-                            <div className="dbadge" aria-hidden="true">
-                                <small>{D(s.from).toLocaleDateString('en-US', { month: 'short' })}</small>
-                                <b>{D(s.from).getDate()}</b>
-                            </div>
-                            <div>
-                                <h3>{s.name}</h3>
-                                <div className="muted sm">
-                                    {s.city} · {fd(s.from, { month: 'short', day: 'numeric' })} to {fd(s.to, { month: 'short', day: 'numeric' })} · {s.kind}
-                                </div>
-                                <div className="nights">
-                                    {nightsBetween(s.from, s.to)} nights · {s.rooms} room{s.rooms === 1 ? '' : 's'}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="row">
-                            <Chip cls={s.status === 'booked' ? 'ok' : 'dash'}>{s.status === 'booked' ? 'Booked' : 'Planned'}</Chip>
-                            {t.can.edit && s.status !== 'booked' && (
-                                <button className="btn ghost sm" onClick={() => setCompare({ city: s.city, stay: s })}>
-                                    Compare alternatives
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                    {t.can.personal && (
-                        <div className="sm">
-                            <span className="muted">Confirmation:</span> {s.conf || 'Not entered'}
-                        </div>
-                    )}
-                    {t.can.personal && (
-                        <div className="g2">
-                            <div className="stack" style={{ gap: 10 }}>
-                                <div>
-                                    <h3 className="sm">Who sleeps where</h3>
-                                    <p className="xs muted">Priced per room. Choose who shares.</p>
-                                </div>
-                                {t.travelers.map((p) => (
-                                    <div key={p.id} className="row between">
-                                        <span className="row sm" style={{ flexWrap: 'nowrap' }}>
-                                            {p.first}
-                                        </span>
-                                        <select
-                                            style={{ width: 130 }}
-                                            value={s.assign[String(p.id)] ?? ''}
-                                            disabled={!t.can.edit}
-                                            aria-label={'Room for ' + p.first}
-                                            onChange={(e) => act('patch', `/stays/${s.id}/rooms`, { traveler_id: p.id, room: Number(e.target.value) })}
-                                        >
-                                            {s.assign[String(p.id)] === undefined && <option value="">Choose</option>}
-                                            {Array.from({ length: s.rooms }, (_, r) => (
-                                                <option key={r} value={r}>
-                                                    Room {r + 1}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ))}
-                                {t.can.edit && (
-                                    <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={() => act('post', `/stays/${s.id}/rooms`)}>
-                                        Add a room
-                                    </button>
-                                )}
-                            </div>
-                            <div className="stack" style={{ gap: 12 }}>
-                                <div className="rooms">
-                                    {Array.from({ length: s.rooms }, (_, r) => {
-                                        const o = Object.entries(s.assign)
-                                            .filter(([id, room]) => room === r && tr(id))
-                                            .map(([id]) => tr(id)!);
-                                        return (
-                                            <div key={r} className="room">
-                                                <b className="sm">Room {r + 1}</b>
-                                                {o.length ? (
-                                                    <>
-                                                        <Avs people={o.map((p) => ({ key: p.key, name: p.name }))} />
-                                                        <span className="xs muted">{o.map((p) => p.first).join(' and ')}</span>
-                                                    </>
-                                                ) : (
-                                                    <span className="xs muted">Empty</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="cost">
-                                    {s.actual != null ? (
-                                        <b>Actual total {money(s.actual)}</b>
-                                    ) : s.hasActual ? (
-                                        <b>Actual cost entered</b>
-                                    ) : (
-                                        <>
-                                            <span className="sm">Estimate: [PRICE RANGE] per room per night</span>
-                                            <span className="xs muted">Disappears when you enter the actual cost.</span>
-                                        </>
-                                    )}
-                                    {t.can.money && (
-                                        <div className="fld" style={{ marginTop: 8 }}>
-                                            <label htmlFor={'sc-' + s.id}>Actual total, USD</label>
-                                            <input
-                                                id={'sc-' + s.id}
-                                                type="number"
-                                                min="0"
-                                                defaultValue={s.actual ?? ''}
-                                                onBlur={(e) => {
-                                                    const v = e.target.value === '' ? null : Number(e.target.value);
-                                                    if (v !== s.actual) act('patch', `/stays/${s.id}/cost`, { actual: v });
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {t.can.edit && <StayDetails s={s} />}
-                </section>
+                <StayCard key={s.id} t={t} s={s} onCompare={() => setCompare({ city: s.city, stay: s })} />
             ))}
             {!t.stays.length && <div className="card muted">No stays yet.</div>}
             {t.can.edit && (

@@ -177,7 +177,7 @@ export interface MenuItem {
 }
 
 /** A small ⋯ button that opens a list of less-used actions. Closes on pick, outside click or Escape. */
-export function MoreMenu({ label, items }: { label: string; items: MenuItem[] }) {
+export function MoreMenu({ label, items, trigger }: { label: string; items: MenuItem[]; trigger?: ReactNode }) {
     const [open, setOpen] = useState(false);
     const wrap = useRef<HTMLDivElement>(null);
     const list = useRef<HTMLDivElement>(null);
@@ -207,12 +207,14 @@ export function MoreMenu({ label, items }: { label: string; items: MenuItem[] })
     if (!items.length) return null;
     return (
         <div className="more" ref={wrap}>
-            <button type="button" className="btn ghost sm more-btn" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="5" cy="12" r="2" />
-                    <circle cx="12" cy="12" r="2" />
-                    <circle cx="19" cy="12" r="2" />
-                </svg>
+            <button type="button" className={'btn ghost sm more-btn' + (trigger ? ' has-text' : '')} aria-label={trigger ? undefined : label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+                {trigger ?? (
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="5" cy="12" r="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <circle cx="19" cy="12" r="2" />
+                    </svg>
+                )}
             </button>
             {open && (
                 <div className="more-list" role="menu" aria-label={label} ref={list}>

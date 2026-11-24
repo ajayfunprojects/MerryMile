@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { ADDON_LABEL, copy, ROLE_LABEL } from '../../lib/util';
 import type { Addon, RosterEntry, Trip } from '../../types';
-import { act, Av, Chip, ToggleChip, useToast } from '../ui';
+import { act, Av, Chip, MoreMenu, ToggleChip, useToast } from '../ui';
 
 const ROLES = ['trip_admin', 'planner', 'adult_traveler', 'viewer'];
 const ADDONS: Addon[] = ['treasurer', 'guardian'];
@@ -86,11 +86,19 @@ export function TravelersTab({ trip: t }: { trip: Trip }) {
                                 )}
                             </div>
                         </div>
-                        {!v && (
-                            <Link className="btn ghost sm" href={'/travelers/' + p.id}>
-                                Open profile
-                            </Link>
-                        )}
+                        <div className="row" style={{ flex: 'none', gap: 4 }}>
+                            {!v && (
+                                <Link className="btn ghost sm" href={'/travelers/' + p.id}>
+                                    Open profile
+                                </Link>
+                            )}
+                            {t.can.admin && p.member?.role !== 'trip_admin' && (
+                                <MoreMenu
+                                    label={'More for ' + p.first}
+                                    items={[{ label: 'Remove from trip', danger: true, onSelect: () => confirm(`Remove ${p.first} from this trip?`) && act('delete', `/trips/${t.id}/travelers/${p.id}`) }]}
+                                />
+                            )}
+                        </div>
                     </div>
                     {p.isMinor ? (
                         <Chip cls="dash" style={{ alignSelf: 'flex-start' }}>
@@ -113,33 +121,27 @@ export function TravelersTab({ trip: t }: { trip: Trip }) {
                             ))}
                         </div>
                     )}
-                    {t.can.admin && p.member?.role !== 'trip_admin' && (
-                        <div>
-                            <button className="btn ghost sm" onClick={() => confirm(`Remove ${p.first} from this trip?`) && act('delete', `/trips/${t.id}/travelers/${p.id}`)}>
-                                Remove from trip
-                            </button>
-                        </div>
-                    )}
                 </div>
             ))}
             {t.otherMembers.map((m) => (
                 <div key={m.id} className="card stack">
-                    <div className="row">
-                        <Av k={m.key} name={m.name} style={{ margin: 0 }} />
-                        <div>
-                            <b>{m.name}</b>
-                            {m.isMe && <span className="muted"> (you)</span>}
-                            <div className="xs muted">Member, not traveling</div>
+                    <div className="chead">
+                        <div className="who">
+                            <Av k={m.key} name={m.name} style={{ margin: 0 }} />
+                            <div>
+                                <b>{m.name}</b>
+                                {m.isMe && <span className="muted"> (you)</span>}
+                                <div className="xs muted">Member, not traveling</div>
+                            </div>
                         </div>
+                        {t.can.admin && m.role !== 'trip_admin' && (
+                            <MoreMenu
+                                label={'More for ' + m.name}
+                                items={[{ label: 'Remove from trip', danger: true, onSelect: () => confirm(`Remove ${m.name} from this trip?`) && act('delete', `/trips/${t.id}/members/${m.id}`) }]}
+                            />
+                        )}
                     </div>
                     <RoleControls t={t} member={m} />
-                    {t.can.admin && m.role !== 'trip_admin' && (
-                        <div>
-                            <button className="btn ghost sm" onClick={() => confirm(`Remove ${m.name} from this trip?`) && act('delete', `/trips/${t.id}/members/${m.id}`)}>
-                                Remove from trip
-                            </button>
-                        </div>
-                    )}
                 </div>
             ))}
             {t.invites.map((i) => (
@@ -164,10 +166,14 @@ export function TravelersTab({ trip: t }: { trip: Trip }) {
             ))}
             {t.can.admin && <AddSaved t={t} />}
             {t.can.admin && (
-                <p className="xs muted">
-                    Roles: Trip Admin does everything. Planner edits the itinerary. Adult Traveler chats, votes and edits their own details. Viewer reads the itinerary only. Treasurer sees and enters costs. Guardian manages linked
-                    minors. Every role change is logged.
-                </p>
+                <details className="ed">
+                    <summary className="linkish xs">What can each role do?</summary>
+                    <p className="xs muted">
+                        {' '}
+                        Trip Admin does everything. Planner edits the itinerary. Adult Traveler chats, votes and edits their own details. Viewer reads the itinerary only. Treasurer sees and enters costs. Guardian manages
+                        linked minors. Every role change is logged.
+                    </p>
+                </details>
             )}
         </div>
     );

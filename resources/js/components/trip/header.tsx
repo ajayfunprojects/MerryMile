@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ADDON_LABEL, fd, ROLE_LABEL } from '../../lib/util';
 import type { Trip } from '../../types';
 import { act, Avs, Chip, Field, MenuItem, Modal, MoreMenu, ToggleChip } from '../ui';
-import { TABS } from './shared';
+import { placesLabel, tripTabs } from './shared';
 
 function InviteModal({ trip, onClose }: { trip: Trip; onClose: () => void }) {
     const [f, setF] = useState({ email: '', role: 'adult_traveler', addons: [] as string[] });
@@ -108,13 +108,12 @@ export function TripHeader({ trip: t, tab, setTab }: { trip: Trip; tab: string; 
                 <div>
                     <h1>{t.name}</h1>
                     <p className="muted">
-                        {fd(t.start, { month: 'short', day: 'numeric' })} to {fd(t.end, { month: 'short', day: 'numeric', year: 'numeric' })} · {t.dests.join(', ')}
+                        {fd(t.start, { month: 'short', day: 'numeric' })} to {fd(t.end, { month: 'short', day: 'numeric', year: 'numeric' })} · {placesLabel(t.dests)}
                     </p>
                 </div>
                 <div className="row">
                     <Avs people={people} />
                     <Chip cls={t.archived ? 'dash' : 'on'}>{t.archived ? 'Archived' : 'Planning'}</Chip>
-                    <Chip cls="dash">You: {ROLE_LABEL[t.me.role]}</Chip>
                 </div>
             </div>
             <div className="row">
@@ -123,17 +122,19 @@ export function TripHeader({ trip: t, tab, setTab }: { trip: Trip; tab: string; 
                         Invite
                     </button>
                 )}
-                <a className="btn ghost sm" href={`/trips/${t.id}/print`} target="_blank" rel="noopener">
-                    Export PDF
-                </a>
-                <a className="btn ghost sm" href={`/trips/${t.id}/calendar.ics`}>
-                    Add to calendar
-                </a>
+                <MoreMenu
+                    label="Share or export"
+                    trigger="Share"
+                    items={[
+                        { label: 'Export PDF', onSelect: () => window.open(`/trips/${t.id}/print`, '_blank', 'noopener') },
+                        { label: 'Add to calendar (.ics)', onSelect: () => (window.location.href = `/trips/${t.id}/calendar.ics`) },
+                    ]}
+                />
                 <MoreMenu label="More trip actions" items={more} />
             </div>
             {t.archived && <div className="warnbox">This trip is archived and read-only. {t.can.adminRole ? 'Reopen it to make changes.' : ''}</div>}
             <div className="tabs" role="tablist">
-                {TABS.map(([k, l]) => (
+                {tripTabs(t).map(([k, l]) => (
                     <button key={k} className="tab" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
                         {l}
                         {k === 'chat' && (
