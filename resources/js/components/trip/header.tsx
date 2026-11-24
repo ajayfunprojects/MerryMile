@@ -93,7 +93,18 @@ export function TripHeader({ trip: t, tab, setTab }: { trip: Trip; tab: string; 
     const people = t.travelers.map((p) => ({ key: p.key, name: p.name }));
     // Less-used and risky actions live in the ⋯ menu to keep the header calm.
     const more: MenuItem[] = [
-        ...(t.can.admin ? [{ label: 'Archive trip', onSelect: () => act('post', `/trips/${t.id}/archive`) }] : []),
+        ...(t.can.admin
+            ? [
+                  {
+                      label: 'Archive trip',
+                      onSelect: () => {
+                          const open = t.money?.transfers.length ?? 0;
+                          if (open && !confirm(`${open} ${open === 1 ? 'payment is' : 'payments are'} still needed to settle up. Archived trips are read-only. Archive anyway?`)) return;
+                          act('post', `/trips/${t.id}/archive`);
+                      },
+                  },
+              ]
+            : []),
         ...(t.archived && t.can.adminRole ? [{ label: 'Reopen trip', onSelect: () => act('post', `/trips/${t.id}/unarchive`) }] : []),
         ...(t.can.adminRole ? [{ label: 'Delete trip…', onSelect: () => setModal('delete'), danger: true }] : []),
     ];
@@ -127,6 +138,7 @@ export function TripHeader({ trip: t, tab, setTab }: { trip: Trip; tab: string; 
                     trigger="Share"
                     items={[
                         { label: 'Export PDF', onSelect: () => window.open(`/trips/${t.id}/print`, '_blank', 'noopener') },
+                        ...(t.money ? [{ label: 'Settle-up summary', onSelect: () => window.open(`/trips/${t.id}/settle-up`, '_blank', 'noopener') }] : []),
                         { label: 'Add to calendar (.ics)', onSelect: () => (window.location.href = `/trips/${t.id}/calendar.ics`) },
                     ]}
                 />

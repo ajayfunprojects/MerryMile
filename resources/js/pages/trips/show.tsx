@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Shell } from '../../components/layout';
 import { ChatTab } from '../../components/trip/chat';
+import { ExpensesTab } from '../../components/trip/expenses';
 import { TripHeader } from '../../components/trip/header';
 import { ItineraryTab } from '../../components/trip/itinerary';
 import { scrollToDay, tripTabs } from '../../components/trip/shared';
@@ -41,6 +42,7 @@ export default function ShowTrip({ trip, tab: initialTab }: { trip: Trip; tab: s
         itinerary: <ItineraryTab trip={trip} />,
         travel: <TravelTab trip={trip} />,
         stays: <StaysTab trip={trip} />,
+        expenses: trip.money ? <ExpensesTab trip={trip} /> : null,
         visas: <VisasTab trip={trip} />,
         chat: <ChatTab trip={trip} goTab={setTab} />,
         travelers: <TravelersTab trip={trip} />,

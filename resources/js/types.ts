@@ -147,7 +147,33 @@ export interface Trip {
     docs: { id: number; kind: string; text: string }[];
     invites: { id: number; email: string; role: Role; addons: Addon[]; link: string }[];
     me: { userId: number; travelerId: number | null; key: string; role: Role };
-    can: { edit: boolean; admin: boolean; adminRole: boolean; money: boolean; chat: boolean; personal: boolean };
+    can: { edit: boolean; admin: boolean; adminRole: boolean; money: boolean; chat: boolean; personal: boolean; expenses: boolean; addExpense: boolean };
+    money: Money | null; // shared expenses; null for Viewers
+}
+
+/** Shared expenses and settle up. All amounts are in cents. */
+export interface Money {
+    currency: string;
+    me: number | null; // your traveler id on this trip
+    canSettle: boolean; // Treasurer or Trip Admin
+    expenses: {
+        id: number;
+        title: string;
+        category: 'food' | 'transport' | 'stay' | 'activity' | 'other';
+        amount: number;
+        date: string;
+        paidBy: number;
+        paidByName: string;
+        split: 'equal' | 'exact';
+        note: string | null;
+        shares: { id: number; name: string; amount: number; chargedTo: number }[];
+        canManage: boolean;
+    }[];
+    balances: { id: number; name: string; first: string; minors: string[]; paid: number; share: number; sent: number; received: number; balance: number }[];
+    transfers: { from: number; to: number; amount: number; fromName: string; toName: string; canMark: boolean }[];
+    payments: { id: number; from: number; to: number; fromName: string; toName: string; amount: number; at: string }[];
+    billing: { id: number; name: string; adult: number }[];
+    adults: { id: number; name: string }[];
 }
 
 export interface RosterEntry {

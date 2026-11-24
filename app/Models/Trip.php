@@ -51,6 +51,16 @@ class Trip extends Model
         return $this->belongsToMany(Traveler::class, 'trip_travelers')->withTimestamps();
     }
 
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class)->orderByDesc('spent_on')->orderByDesc('id');
+    }
+
+    public function settlements(): HasMany
+    {
+        return $this->hasMany(Settlement::class)->orderBy('paid_at');
+    }
+
     public function destinations(): HasMany
     {
         return $this->hasMany(TripDestination::class);

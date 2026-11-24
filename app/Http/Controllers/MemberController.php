@@ -9,6 +9,7 @@ use App\Models\TripInvite;
 use App\Models\TripMember;
 use App\Models\User;
 use App\Notifications\TripInvitation;
+use App\Support\Expenses;
 use App\Support\Roster;
 use App\Support\TripAccess;
 use App\Support\TripBuilder;
@@ -82,6 +83,9 @@ class MemberController extends Controller
         $member = $traveler->linked_user_id ? $trip->members()->where('user_id', $traveler->linked_user_id)->first() : null;
         if ($member?->role === 'trip_admin') {
             return back()->with('toast', 'A Trip Admin cannot be removed. Change their role first.');
+        }
+        if (! $traveler->isMinor() && Expenses::balanceOf($trip, $traveler->id) !== 0) {
+            return back()->with('toast', $traveler->firstName().' still has an unsettled balance. Settle up on the Expenses tab first.');
         }
         DB::transaction(function () use ($trip, $traveler, $member) {
             $trip->tripTravelers()->where('traveler_id', $traveler->id)->delete();

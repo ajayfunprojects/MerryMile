@@ -24,6 +24,7 @@ export const TABS: [string, string][] = [
     ['itinerary', 'Itinerary'],
     ['travel', 'Getting there'],
     ['stays', 'Stays'],
+    ['expenses', 'Expenses'],
     ['visas', 'Visas'],
     ['chat', 'Chat'],
     ['travelers', 'Travelers'],
@@ -36,7 +37,7 @@ export const duringTrip = (t: Trip) => {
     return today >= t.start && today <= t.end;
 };
 
-export const tripTabs = (t: Trip) => TABS.filter(([k]) => k !== 'today' || duringTrip(t));
+export const tripTabs = (t: Trip) => TABS.filter(([k]) => (k !== 'today' || duringTrip(t)) && (k !== 'expenses' || !!t.money));
 
 /** "India: Assam", "India: Meghalaya" → "Assam and Meghalaya, India". Countries without a region stay as they are. */
 export function placesLabel(dests: string[]) {

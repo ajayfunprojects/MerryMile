@@ -25,7 +25,9 @@ Product spec: the "Travel Planner: Initial Dev Plan" doc. UI reference: the "Mer
   `ai_runs` with tokens and cost. Prompts get places, dates, interests, ages and need labels only:
   never names, emails, passport numbers or medical notes. Without `ANTHROPIC_API_KEY`, features fall
   back to labelled samples. Price lookups will go through `app/Services/Pricing` the same way.
-- Money is USD only in Phase 1, but keep the `currency` columns.
+- Money is USD only in Phase 1, but keep the `currency` columns. Shared-expense math lives in
+  `app/Support/Expenses.php` and works in whole cents so splits always add up; a minor's share is
+  charged to an adult on the trip. Expense rules are in `TripAccess` and tested in `ExpensesTest.php`.
 - Keep the prototype's look: reuse classes from `resources/css/app.css` rather than adding a CSS framework.
 - In-app actions use the `act()` helper (`resources/js/components/ui.tsx`), which keeps scroll and
   tab state. Server messages come back as a `toast` flash.

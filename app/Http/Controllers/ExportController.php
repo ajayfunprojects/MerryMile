@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Trip;
 use App\Support\TripAccess;
+use App\Support\TripPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
@@ -18,6 +19,15 @@ class ExportController extends Controller
         $trip->load('days.activities', 'stays', 'legs', 'destinations', 'tripTravelers.traveler.requirements');
 
         return view('print', ['trip' => $trip, 'personal' => $access->canSeePersonalData()]);
+    }
+
+    /** Printable settle-up summary: paid, share and balance per traveler, payments, and every expense. */
+    public function settleUp(Request $request, Trip $trip): View
+    {
+        $access = TripAccess::for($trip, $request->user())->abortUnless('expenses');
+        $trip->load('destinations', 'tripTravelers.traveler.guardians');
+
+        return view('settle-up', ['trip' => $trip, 'm' => TripPresenter::expenses($trip, $access, $request->user())]);
     }
 
     public function calendar(Request $request, Trip $trip): Response

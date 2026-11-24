@@ -175,6 +175,7 @@ class TripPresenter
                 'addons' => $i->addons ?? [],
                 'link' => url('/invites/'.$i->token),
             ])->values()->all() : [],
+            'money' => $access->canSeeExpenses() ? self::expenses($trip, $access, $user) : null,
             'me' => [
                 'userId' => $user->id,
                 'travelerId' => $self?->id,
@@ -182,6 +183,67 @@ class TripPresenter
                 'role' => $access->role(),
             ],
             'can' => $access->toArray(),
+        ];
+    }
+
+    /**
+     * Shared expenses, balances and settle-up (dev plan 4f). Amounts are in cents.
+     * Viewers never get this: the caller sends null instead.
+     */
+    public static function expenses(Trip $trip, TripAccess $access, User $user): array
+    {
+        $trip->loadMissing(['expenses.shares', 'settlements']);
+        $balances = Expenses::balances($trip);
+        $names = $balances->pluck('first', 'id')->all()
+            + $trip->tripTravelers->mapWithKeys(fn ($tt) => [$tt->traveler_id => $tt->traveler->firstName()])->all();
+        $name = fn ($id) => $names[$id] ?? 'Former traveler';
+        $billing = Expenses::billing($trip);
+        $self = $access->selfTravelerId();
+
+        return [
+            'currency' => 'USD',
+            'me' => $self,
+            'canSettle' => $access->canMoney(),
+            'expenses' => $trip->expenses->map(fn ($e) => [
+                'id' => $e->id,
+                'title' => $e->title,
+                'category' => $e->category,
+                'amount' => Expenses::cents($e->amount),
+                'date' => $e->spent_on->toDateString(),
+                'paidBy' => $e->paid_by_traveler_id,
+                'paidByName' => $name($e->paid_by_traveler_id),
+                'split' => $e->split_type,
+                'note' => $e->note,
+                'shares' => $e->shares->sortBy('id')->map(fn ($s) => [
+                    'id' => $s->traveler_id,
+                    'name' => $name($s->traveler_id),
+                    'amount' => Expenses::cents($s->amount),
+                    'chargedTo' => $s->charged_to_traveler_id,
+                ])->values()->all(),
+                'canManage' => $access->canManageExpense($e),
+            ])->values()->all(),
+            'balances' => $balances->all(),
+            'transfers' => array_map(fn ($t) => $t + [
+                'fromName' => $name($t['from']),
+                'toName' => $name($t['to']),
+                'canMark' => $access->canMarkPayment($t['from'], $t['to']),
+            ], Expenses::transfers($balances)),
+            'payments' => $trip->settlements->map(fn ($p) => [
+                'id' => $p->id,
+                'from' => $p->from_traveler_id,
+                'to' => $p->to_traveler_id,
+                'fromName' => $name($p->from_traveler_id),
+                'toName' => $name($p->to_traveler_id),
+                'amount' => Expenses::cents($p->amount),
+                'at' => $p->paid_at->toIso8601String(),
+            ])->values()->all(),
+            // Children and the adult their shares go to (changeable by Treasurer and Admin).
+            'billing' => collect($billing)->filter(fn ($payer, $tid) => $payer !== $tid)->map(fn ($payer, $tid) => [
+                'id' => $tid,
+                'name' => $name($tid),
+                'adult' => $payer,
+            ])->values()->all(),
+            'adults' => collect($billing)->filter(fn ($payer, $tid) => $payer === $tid)->keys()->map(fn ($id) => ['id' => $id, 'name' => $name($id)])->values()->all(),
         ];
     }
 

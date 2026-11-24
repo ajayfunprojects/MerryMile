@@ -16,6 +16,9 @@ Merrymile is a group trip planner for friends and family. It is the Laravel vers
 - **Privacy:** passport numbers and medical notes are encrypted (AES-256-GCM). Trip Admins
   never see passport numbers. Every passport reveal and medical view is logged, and the
   traveler can see who looked.
+- **Shared expenses:** anyone on the trip logs what they paid for the group; a child's share goes to
+  their adult. **Settle up** shows what each person paid, their share and balance, and the fewest
+  payments to square up, with Mark as paid and a printable summary.
 - **Exports:** a printable itinerary (save it as PDF) and a calendar file (.ics).
 - **Themes:** Auto (dark from 7 PM to 7 AM), Light or Dark, in four colour palettes.
 
@@ -117,8 +120,8 @@ npm run build        # or: npm run dev, alongside php artisan serve
 php artisan serve
 ```
 
-Tests (61 feature and unit tests covering every role's permissions, privacy rules, invites,
-chat and exports):
+Tests (78 feature and unit tests covering every role's permissions, privacy rules, invites,
+chat, exports, the AI planner and shared expenses):
 
 ```bash
 php artisan test
@@ -138,6 +141,7 @@ database Laravel Cloud uses) when the code is hosted on GitHub; on GitLab it is 
 | Sample trip and sample suggestions | `app/Support/SampleTrip.php`, `app/Support/Samples.php` |
 | AI planning (Claude) | `app/Services/Ai/` (planner prompt and schema in `TripPlanner.php`), `app/Jobs/PlanTripJob.php` |
 | New-trip wizard | `resources/js/pages/trips/create.tsx`, `resources/js/components/planner/` |
+| Shared expenses and settle up | `app/Support/Expenses.php` (math, in cents), `app/Http/Controllers/ExpenseController.php`, `resources/js/components/trip/expenses.tsx` |
 | Encryption of sensitive fields | `app/Casts/SensitiveEncrypted.php` |
 | Database schema | `database/migrations/` |
 | Pages | `resources/js/pages/`; trip tabs in `resources/js/components/trip/` |

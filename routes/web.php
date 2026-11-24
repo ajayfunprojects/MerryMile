@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ItineraryController;
 use App\Http\Controllers\LogisticsController;
@@ -47,6 +48,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/trips/{trip}/archive', [TripController::class, 'archive']);
     Route::post('/trips/{trip}/unarchive', [TripController::class, 'unarchive']);
     Route::get('/trips/{trip}/print', [ExportController::class, 'print']);
+    Route::get('/trips/{trip}/settle-up', [ExportController::class, 'settleUp']);
     Route::get('/trips/{trip}/calendar.ics', [ExportController::class, 'calendar']);
 
     // Itinerary
@@ -78,6 +80,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/polls/{poll}/apply', [ChatController::class, 'apply']);
 
     // Members, roles, invites
+    // Shared expenses and settling up (dev plan 4f)
+    Route::post('/trips/{trip}/expenses', [ExpenseController::class, 'store'])->middleware('throttle:60,1');
+    Route::put('/expenses/{expense}', [ExpenseController::class, 'update']);
+    Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
+    Route::post('/trips/{trip}/settlements', [ExpenseController::class, 'pay']);
+    Route::delete('/settlements/{settlement}', [ExpenseController::class, 'undoPayment']);
+    Route::patch('/trips/{trip}/travelers/{traveler}/billing', [ExpenseController::class, 'billing']);
+
     Route::patch('/trips/{trip}/members/{member}', [MemberController::class, 'updateMember']);
     Route::delete('/trips/{trip}/members/{member}', [MemberController::class, 'removeMember']);
     Route::post('/trips/{trip}/travelers', [MemberController::class, 'addTraveler']);
