@@ -41,7 +41,9 @@ class Airlines
                 $scored[] = [$score, ['code' => $c, 'name' => $name, 'country' => $country]];
             }
         }
-        usort($scored, fn ($a, $b) => $a[0] <=> $b[0] ?: strcmp($a[1]['name'], $b[1]['name']));
+        // Ties go to the shorter core name, so "Air India" comes before "Air India Express".
+        $core = fn (string $n) => strlen(trim(preg_replace('/\b(limited|ltd|airlines?|airways|inc|corporation|company)\b/i', '', $n)));
+        usort($scored, fn ($a, $b) => $a[0] <=> $b[0] ?: $core($a[1]['name']) <=> $core($b[1]['name']) ?: strcmp($a[1]['name'], $b[1]['name']));
 
         return array_slice(array_column($scored, 1), 0, $limit);
     }
