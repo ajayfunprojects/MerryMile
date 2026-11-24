@@ -276,7 +276,7 @@ function SettleUp({ t, m }: { t: Trip; m: Money }) {
                 {rows.some((b) => b.moved) && <p className="xs muted">Balances include payments already made.</p>}
             </div>
             {m.expenses.length > 0 && (
-                <div className="card stack">
+                <div className="card stack" id="settle-payments" style={{ scrollMarginTop: 20 }}>
                     <h3>{pays.length ? `${pays.length} ${pays.length === 1 ? 'payment' : 'payments'} to square up` : 'Everyone is settled up'}</h3>
                     {pays.map((x) => (
                         <div key={x.key} className="row between payrow">
@@ -350,33 +350,46 @@ function SettleUp({ t, m }: { t: Trip; m: Money }) {
     );
 }
 
+type Show = 'all' | 'mine' | 'paid';
+
 export function ExpensesTab({ trip: t }: { trip: Trip }) {
     const m = t.money!;
     const [form, setForm] = useState<null | 'new' | number>(null);
+    const [show, setShow] = useState<Show>('all');
     const total = m.expenses.reduce((n, e) => n + e.amount, 0);
     const mine = m.balances.find((b) => b.id === m.me);
+    const paidByMe = m.expenses.filter((e) => e.paidBy === m.me);
     const canAdd = t.can.addExpense && (m.me !== null || m.canSettle);
     const editing = typeof form === 'number' ? m.expenses.find((e) => e.id === form) : undefined;
+    // My expenses = ones I paid, or that cover me or a child billed to me.
+    const involvesMe = (e: Expense) => e.paidBy === m.me || e.shares.some((s) => s.id === m.me || s.chargedTo === m.me);
+    const list = show === 'mine' ? m.expenses.filter(involvesMe) : show === 'paid' ? paidByMe : m.expenses;
+    // Follows the trip's settle-up default (by person or by family).
+    const toSettle = m.settleBy === 'family' && m.families.some((f) => f.adults.length) ? m.familyTransfers.length : m.transfers.length;
+    const pick = (k: Show) => setShow(show === k && k !== 'all' ? 'all' : k);
+    const toPayments = () => document.getElementById('settle-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return (
         <div className="layout">
             <div className="stack">
-                <div className="stats">
-                    <div className="stat">
+                <div className="stats" role="group" aria-label="Show expenses">
+                    <button type="button" className="stat statbtn" aria-pressed={show === 'all'} onClick={() => pick('all')}>
                         <b>{usd(total)}</b>
-                        <span>Spent together</span>
-                    </div>
-                    <div className="stat">
+                        <span>Spent together · all</span>
+                    </button>
+                    <button type="button" className="stat statbtn" aria-pressed={show === 'mine'} disabled={!mine} onClick={() => pick('mine')}>
                         <b className={mine && mine.balance > 0 ? 'pos' : mine && mine.balance < 0 ? 'neg' : ''}>{mine ? usd(Math.abs(mine.balance)) : '—'}</b>
                         <span>{!mine ? 'Not traveling' : mine.balance > 0 ? 'You get back' : mine.balance < 0 ? 'You owe' : 'You are settled'}</span>
-                    </div>
-                    <div className="stat">
-                        <b>{m.expenses.length}</b>
-                        <span>Expenses</span>
-                    </div>
-                    <div className="stat">
-                        <b>{m.transfers.length}</b>
+                    </button>
+                    <button type="button" className="stat statbtn" aria-pressed={show === 'paid'} disabled={!mine} onClick={() => pick('paid')}>
+                        <b>{usd(paidByMe.reduce((n, e) => n + e.amount, 0))}</b>
+                        <span>
+                            Paid by you · {paidByMe.length} {paidByMe.length === 1 ? 'expense' : 'expenses'}
+                        </span>
+                    </button>
+                    <button type="button" className="stat statbtn" disabled={!m.expenses.length} onClick={toPayments}>
+                        <b>{toSettle}</b>
                         <span>Payments to settle</span>
-                    </div>
+                    </button>
                 </div>
                 {form === 'new' || editing ? (
                     <ExpenseForm key={editing?.id ?? 'new'} t={t} m={m} edit={editing} onClose={() => setForm(null)} />
@@ -387,11 +400,21 @@ export function ExpensesTab({ trip: t }: { trip: Trip }) {
                         </button>
                     )
                 )}
+                {show !== 'all' && (
+                    <div className="row between sm">
+                        <span className="muted">
+                            {show === 'mine' ? 'Expenses you paid or share in' : 'Expenses you paid'} · {list.length} of {m.expenses.length}
+                        </span>
+                        <button type="button" className="linkish xs" onClick={() => setShow('all')}>
+                            Show all
+                        </button>
+                    </div>
+                )}
                 <div className="card stack" style={{ gap: 0 }}>
-                    {m.expenses.length ? (
-                        m.expenses.map((e) => <ExpenseRow key={e.id} e={e} onEdit={() => (setForm(e.id), window.scrollTo({ top: 0, behavior: 'smooth' }))} />)
+                    {list.length ? (
+                        list.map((e) => <ExpenseRow key={e.id} e={e} onEdit={() => (setForm(e.id), window.scrollTo({ top: 0, behavior: 'smooth' }))} />)
                     ) : (
-                        <p className="muted sm">No shared expenses yet. When someone pays for the group, add it here and Merrymile works out who owes whom.</p>
+                        <p className="muted sm">{m.expenses.length ? 'Nothing here yet.' : 'No shared expenses yet. When someone pays for the group, add it here and Merrymile works out who owes whom.'}</p>
                     )}
                 </div>
             </div>

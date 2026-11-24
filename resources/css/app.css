@@ -302,3 +302,4 @@ a.statbtn{text-decoration:none}
 a.chiplink{text-decoration:none;cursor:pointer}a.chiplink:hover{filter:brightness(.96);text-decoration:underline;text-underline-offset:3px}
 a.itemlink{text-decoration:none;color:inherit;border-radius:10px}a.itemlink:hover b{color:var(--brand);text-decoration:underline}
 a.statbtn:focus-visible,a.chiplink:focus-visible,a.itemlink:focus-visible{outline:none;box-shadow:var(--ring)}
+button.statbtn:disabled{cursor:default;opacity:.7}button.statbtn:disabled:hover{border-color:var(--line)}
