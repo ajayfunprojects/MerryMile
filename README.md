@@ -84,7 +84,8 @@ You do this once. After that, every push to `main` redeploys automatically.
   and never change the key afterwards: data encrypted with the old key could no longer be read.
   (Until you set it, the app falls back to `APP_KEY` from step 7.)
 - **Email.** Invites and password-reset links are only written to the log until you add a mail
-  service. With Postmark, set `MAIL_MAILER=postmark`, `POSTMARK_API_KEY`, `MAIL_FROM_ADDRESS` and
+  service. Postmark needs a small code change first (its email package is not installed yet; see
+  `docs/SERVICES.md`). Then, with Postmark, set `MAIL_MAILER=postmark`, `POSTMARK_API_KEY`, `MAIL_FROM_ADDRESS` and
   `MAIL_FROM_NAME` in the environment variables. Until then, copy invite links from the trip's
   **Travelers** tab and send them yourself.
 - **Google and Microsoft sign-in (optional).** Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
@@ -119,7 +120,8 @@ You do this once. After that, every push to `main` redeploys automatically.
 - **Ticket inbox domain.** Set `INBOUND_EMAIL_DOMAIN` (for example `in.merrymile.com`) once you
   own a domain.
 
-All available settings are listed in [`.env.example`](.env.example).
+Every key and outside service, with its status and where to get it, is tracked in
+[`docs/SERVICES.md`](docs/SERVICES.md). All settings are listed in [`.env.example`](.env.example).
 
 ---
 

@@ -39,3 +39,5 @@ Product spec: the "Travel Planner: Initial Dev Plan" doc. UI reference: the "Mer
 - In-app actions use the `act()` helper (`resources/js/components/ui.tsx`), which keeps scroll and
   tab state. Server messages come back as a `toast` flash.
 - Update the dev plan doc when a change affects the schema, a permission rule or an integration.
+- Every key, account and outside service is listed in `docs/SERVICES.md` with its status. When a change
+  needs a new one, add it there and to `.env.example` in the same change.
