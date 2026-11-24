@@ -2,7 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { ADDON_LABEL, fd, ROLE_LABEL } from '../../lib/util';
 import type { Trip } from '../../types';
-import { act, Avs, Chip, Field, Modal, ToggleChip } from '../ui';
+import { act, Avs, Chip, Field, MenuItem, Modal, MoreMenu, ToggleChip } from '../ui';
 import { TABS } from './shared';
 
 function InviteModal({ trip, onClose }: { trip: Trip; onClose: () => void }) {
@@ -91,6 +91,12 @@ function DeleteModal({ trip, onClose }: { trip: Trip; onClose: () => void }) {
 export function TripHeader({ trip: t, tab, setTab }: { trip: Trip; tab: string; setTab: (k: string) => void }) {
     const [modal, setModal] = useState<null | 'invite' | 'delete'>(null);
     const people = t.travelers.map((p) => ({ key: p.key, name: p.name }));
+    // Less-used and risky actions live in the ⋯ menu to keep the header calm.
+    const more: MenuItem[] = [
+        ...(t.can.admin ? [{ label: 'Archive trip', onSelect: () => act('post', `/trips/${t.id}/archive`) }] : []),
+        ...(t.archived && t.can.adminRole ? [{ label: 'Reopen trip', onSelect: () => act('post', `/trips/${t.id}/unarchive`) }] : []),
+        ...(t.can.adminRole ? [{ label: 'Delete trip…', onSelect: () => setModal('delete'), danger: true }] : []),
+    ];
     return (
         <div className="stack">
             <div className="row">
@@ -123,21 +129,7 @@ export function TripHeader({ trip: t, tab, setTab }: { trip: Trip; tab: string; 
                 <a className="btn ghost sm" href={`/trips/${t.id}/calendar.ics`}>
                     Add to calendar
                 </a>
-                {t.can.admin && (
-                    <button className="btn ghost sm" onClick={() => act('post', `/trips/${t.id}/archive`)}>
-                        Archive trip
-                    </button>
-                )}
-                {t.archived && t.can.adminRole && (
-                    <button className="btn ghost sm" onClick={() => act('post', `/trips/${t.id}/unarchive`)}>
-                        Reopen
-                    </button>
-                )}
-                {t.can.adminRole && (
-                    <button className="btn ghost sm" onClick={() => setModal('delete')}>
-                        Delete
-                    </button>
-                )}
+                <MoreMenu label="More trip actions" items={more} />
             </div>
             {t.archived && <div className="warnbox">This trip is archived and read-only. {t.can.adminRole ? 'Reopen it to make changes.' : ''}</div>}
             <div className="tabs" role="tablist">

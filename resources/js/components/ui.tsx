@@ -168,3 +168,70 @@ export const Icons = {
 export function initials(name: string) {
     return ini(name);
 }
+
+// ---------- "More" menu (⋯) ----------
+export interface MenuItem {
+    label: string;
+    onSelect: () => void;
+    danger?: boolean;
+}
+
+/** A small ⋯ button that opens a list of less-used actions. Closes on pick, outside click or Escape. */
+export function MoreMenu({ label, items }: { label: string; items: MenuItem[] }) {
+    const [open, setOpen] = useState(false);
+    const wrap = useRef<HTMLDivElement>(null);
+    const list = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!open) return;
+        list.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus();
+        const away = (e: MouseEvent) => wrap.current && !wrap.current.contains(e.target as Node) && setOpen(false);
+        const keys = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setOpen(false);
+                wrap.current?.querySelector<HTMLButtonElement>('.more-btn')?.focus();
+            }
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                const all = Array.from(list.current?.querySelectorAll<HTMLButtonElement>('[role=menuitem]') || []);
+                const i = all.indexOf(document.activeElement as HTMLButtonElement);
+                all[(i + (e.key === 'ArrowDown' ? 1 : all.length - 1)) % all.length]?.focus();
+            }
+        };
+        document.addEventListener('mousedown', away);
+        document.addEventListener('keydown', keys);
+        return () => {
+            document.removeEventListener('mousedown', away);
+            document.removeEventListener('keydown', keys);
+        };
+    }, [open]);
+    if (!items.length) return null;
+    return (
+        <div className="more" ref={wrap}>
+            <button type="button" className="btn ghost sm more-btn" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="5" cy="12" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="19" cy="12" r="2" />
+                </svg>
+            </button>
+            {open && (
+                <div className="more-list" role="menu" aria-label={label} ref={list}>
+                    {items.map((it) => (
+                        <button
+                            key={it.label}
+                            type="button"
+                            role="menuitem"
+                            className={'more-item' + (it.danger ? ' danger' : '')}
+                            onClick={() => {
+                                setOpen(false);
+                                it.onSelect();
+                            }}
+                        >
+                            {it.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}

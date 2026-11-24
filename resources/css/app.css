@@ -243,3 +243,10 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 .tailor .tile{align-items:flex-start}.tailor .tile small{display:block;font-weight:500;color:var(--muted);margin-top:4px;line-height:1.4}
 .tailor .tile[aria-pressed=true] small{color:var(--chip-ink)}
 @media (max-width:560px){.dates-pop{position:fixed;left:16px;right:16px;top:auto;bottom:16px;width:auto;max-height:calc(100vh - 32px);overflow-y:auto}}
+/* ⋯ menu for less-used actions */
+.more{position:relative;display:inline-flex}
+.more-btn{width:44px;padding:0}
+.more-list{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:200px;display:flex;flex-direction:column;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 48px -16px rgba(20,16,40,.4)}
+.more-item{text-align:left;border:0;background:none;color:var(--ink);font:600 14px var(--font);padding:11px 12px;border-radius:10px;cursor:pointer;min-height:44px}
+.more-item:hover,.more-item:focus-visible{background:var(--raised);outline:none}
+.more-item.danger{color:var(--bad)}
