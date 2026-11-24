@@ -193,7 +193,11 @@ function DayCard({ t, d, flt }: { t: Trip; d: Day; flt: Filter }) {
 }
 
 export function ItineraryTab({ trip: t }: { trip: Trip }) {
-    const [flt, setFlt] = useState<Filter>('all');
+    // Links from the dashboard can open a filter, e.g. ?tab=itinerary&filter=suggested
+    const [flt, setFlt] = useState<Filter>(() => {
+        const q = new URLSearchParams(window.location.search).get('filter');
+        return q === 'booked' || q === 'suggested' || q === 'warn' ? q : 'all';
+    });
     const gi = groupInterests(t);
     const all = t.days.flatMap(live);
     const cnt = (k: Filter) => all.filter((x) => shows(x, k)).length;

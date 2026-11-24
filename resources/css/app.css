@@ -297,3 +297,8 @@ details.fold>summary h3::after{content:"›";display:inline-block;margin-left:8p
 .family{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
 .family .more-btn{border-color:transparent;color:var(--muted)}
 .famsel{width:auto;min-width:170px;height:38px;min-height:38px;font-size:13px;padding:4px 10px}
+/* Dashboard: count cards, status tags and stay rows open the matching tab */
+a.statbtn{text-decoration:none}
+a.chiplink{text-decoration:none;cursor:pointer}a.chiplink:hover{filter:brightness(.96);text-decoration:underline;text-underline-offset:3px}
+a.itemlink{text-decoration:none;color:inherit;border-radius:10px}a.itemlink:hover b{color:var(--brand);text-decoration:underline}
+a.statbtn:focus-visible,a.chiplink:focus-visible,a.itemlink:focus-visible{outline:none;box-shadow:var(--ring)}
