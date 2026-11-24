@@ -305,3 +305,9 @@ a.statbtn:focus-visible,a.chiplink:focus-visible,a.itemlink:focus-visible{outlin
 button.statbtn:disabled{cursor:default;opacity:.7}button.statbtn:disabled:hover{border-color:var(--line)}
 /* Headings, the wordmark and big numbers use the heading font */
 h1,h2,h3,.logo span,.stat b,.dbadge b,.balamt b{font-family:var(--font-head);letter-spacing:-.01em}
+/* Live flight status on the Getting there tab */
+.flightline{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px}
+.flightline .chip{min-height:24px;padding:2px 10px;font-size:12px}
+.flightnote{margin-top:4px}
+.flightbar{padding:8px 12px;border-radius:12px;background:var(--raised);gap:8px}
+.deprow{padding:8px 0;border-top:1px solid var(--line)}.deprow:first-child{border-top:0;padding-top:0}

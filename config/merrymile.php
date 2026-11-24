@@ -31,4 +31,29 @@ return [
             'claude-sonnet-5-5' => [2.00, 10.00, 0.10],
         ],
     ],
+
+    // Live flight status on the Getting there tab (app/Services/Flights).
+    // Works with AeroDataBox or AirLabs; without a key it shows labelled samples.
+    'flights' => [
+        // aerodatabox | airlabs. Empty = whichever has a key (AeroDataBox first).
+        'provider' => env('FLIGHT_STATUS_PROVIDER'),
+        'aerodatabox' => [
+            'key' => env('AERODATABOX_API_KEY'),
+            // RapidAPI by default; API.market and the direct API use other hosts.
+            'url' => env('AERODATABOX_URL', 'https://aerodatabox.p.rapidapi.com'),
+            'host' => env('AERODATABOX_HOST', 'aerodatabox.p.rapidapi.com'),
+            // The header the key goes in: X-RapidAPI-Key (RapidAPI) or x-magicapi-key (API.market).
+            'key_header' => env('AERODATABOX_KEY_HEADER', 'X-RapidAPI-Key'),
+        ],
+        'airlabs' => [
+            'key' => env('AIRLABS_API_KEY'),
+            'url' => env('AIRLABS_URL', 'https://airlabs.co/api/v9'),
+        ],
+        // Reuse a result this long before asking the provider again.
+        'cache_minutes' => (int) env('FLIGHT_STATUS_CACHE_MINUTES', 15),
+        // Flights more than this many days away are not looked up yet.
+        'lookahead_days' => (int) env('FLIGHT_STATUS_LOOKAHEAD_DAYS', 7),
+        // Most provider calls per day for the whole app, to stay inside the free tier.
+        'daily_limit' => (int) env('FLIGHT_STATUS_DAILY_LIMIT', 60),
+    ],
 ];

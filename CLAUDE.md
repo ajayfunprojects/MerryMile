@@ -25,6 +25,9 @@ Product spec: the "Travel Planner: Initial Dev Plan" doc. UI reference: the "Mer
   `ai_runs` with tokens and cost. Prompts get places, dates, interests, ages and need labels only:
   never names, emails, passport numbers or medical notes. Without `ANTHROPIC_API_KEY`, features fall
   back to labelled samples. Price lookups will go through `app/Services/Pricing` the same way.
+- Flight status goes through `app/Services/Flights` (the `FlightStatusProvider` interface: AeroDataBox,
+  AirLabs, samples without a key). Send only the flight number and date; cache in `flight_lookups` and
+  respect the daily cap. Tests fake HTTP with `Http::fake` (`FlightStatusTest.php`).
 - Money is USD only in Phase 1, but keep the `currency` columns. Shared-expense math lives in
   `app/Support/Expenses.php` and works in whole cents so splits always add up; a minor's share is
   charged to an adult on the trip. Families (`trip_families`, adults only; children follow the adult

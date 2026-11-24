@@ -6,6 +6,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FamilyController;
+use App\Http\Controllers\FlightStatusController;
 use App\Http\Controllers\ItineraryController;
 use App\Http\Controllers\LogisticsController;
 use App\Http\Controllers\MemberController;
@@ -61,6 +62,7 @@ Route::middleware('auth')->group(function () {
 
     // Getting there, transfers, stays, tickets
     Route::patch('/trips/{trip}/deadline', [LogisticsController::class, 'deadline']);
+    Route::get('/trips/{trip}/flight-status', [FlightStatusController::class, 'show'])->middleware('throttle:30,1');
     Route::patch('/trips/{trip}/travelers/{traveler}/flights', [LogisticsController::class, 'flights']);
     Route::post('/trips/{trip}/legs', [LogisticsController::class, 'addLeg']);
     Route::patch('/legs/{leg}/cost', [LogisticsController::class, 'legCost']);

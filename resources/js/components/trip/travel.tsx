@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { copy, D, fd, fmtT, mins, money } from '../../lib/util';
 import type { Trip, TripTraveler } from '../../types';
 import { act, Av, Chip, Field, useToast } from '../ui';
+import { flightKey, FlightLine, FlightStatusBar, liveTime, useFlightStatus } from './flight-status';
 
 const TIME_TICKS: [number, string][] = [
     [360, '6 AM'],
@@ -111,11 +112,19 @@ function AddLeg({ t }: { t: Trip }) {
 
 export function TravelTab({ trip: t }: { trip: Trip }) {
     const toast = useToast();
+    const fs = useFlightStatus(t);
+    const live = (p: TripTraveler, role: 'arrival' | 'departure') => {
+        const f = role === 'arrival' ? p.flights?.arr : p.flights?.dep;
+        return f?.no && fs.data ? fs.data.flights[flightKey(role, f.no, role === 'arrival' ? t.start : t.end)] : undefined;
+    };
+    // The arrival time that counts: the live estimate when there is one, else what the traveler typed.
+    const lands = (p: TripTraveler) => (fs.data && !fs.data.sample ? liveTime(live(p, 'arrival')) : null) ?? p.flights?.arr?.time ?? null;
     const status = (p: TripTraveler): [string, string] | null => {
         const f = p.flights;
-        if (!f || !f.arr || !f.arr.time) return null;
+        const at = lands(p);
+        if (!f || !f.arr || !at) return null;
         const dl = mins(p.deadlineOverride || t.deadline),
-            l = mins(f.arr.time);
+            l = mins(at);
         return l <= dl - 60 ? ['On time', 'ok'] : l <= dl ? ['Tight', 'warn'] : ['Late', 'bad'];
     };
     const cnt = { ok: 0, warn: 0, bad: 0 } as Record<string, number>;
@@ -145,13 +154,14 @@ export function TravelTab({ trip: t }: { trip: Trip }) {
                             <>
                                 <b>{f.arr.no}</b>
                                 <div className="xs muted">lands {fmtT(f.arr.time)}</div>
+                                <FlightLine e={live(p, 'arrival')} sample={!!fs.data?.sample} typed={f.arr.time} />
                             </>
                         ) : (
                             <span className="muted">No flight yet</span>
                         )}
                     </div>
                     <div className="tbar" role="img" aria-label={f.arr?.time ? 'Lands ' + fmtT(f.arr.time) + ', deadline ' + fmtT(dl) : 'No arrival'}>
-                        {f.arr?.time && s && <i className={s[1]} style={{ width: pos(mins(f.arr.time)) + '%' }}></i>}
+                        {lands(p) && s && <i className={s[1]} style={{ width: pos(mins(lands(p)!)) + '%' }}></i>}
                         <b style={{ left: pos(mins(dl)) + '%' }} title={'Deadline ' + fmtT(dl)}></b>
                     </div>
                     <div style={{ textAlign: 'right' }}>{s ? <Chip cls={s[1]}>{s[0]}</Chip> : <Chip cls="dash">{p.isMinor ? 'With adult' : 'Missing'}</Chip>}</div>
@@ -205,6 +215,7 @@ export function TravelTab({ trip: t }: { trip: Trip }) {
                                 <b>{fmtT(t.deadline)}</b>
                             )}
                         </div>
+                        {fs.has && <FlightStatusBar data={fs.data} busy={fs.busy} refresh={fs.refresh} />}
                         <div className="ticks tk" aria-hidden="true">
                             {TIME_TICKS.map((x) => (
                                 <span key={x[0]} style={{ left: pos(x[0]) + '%' }}>
@@ -220,12 +231,15 @@ export function TravelTab({ trip: t }: { trip: Trip }) {
                 {deps.length > 0 && (
                     <section className="card stack">
                         <h3>Departures · {fd(t.end)}</h3>
-                        <div className="wrap">
+                        <div className="stack" style={{ gap: 8 }}>
                             {deps.map((p) => (
-                                <Chip key={p.id}>
-                                    {p.first} · {p.flights!.dep!.no}
-                                    {p.flights!.dep!.time ? ' · ' + fmtT(p.flights!.dep!.time) : ''}
-                                </Chip>
+                                <div key={p.id} className="deprow">
+                                    <span className="sm">
+                                        <b>{p.first}</b> · {p.flights!.dep!.no}
+                                        {p.flights!.dep!.time ? ' · ' + fmtT(p.flights!.dep!.time) : ''}
+                                    </span>
+                                    <FlightLine e={live(p, 'departure')} sample={!!fs.data?.sample} typed={p.flights!.dep!.time} />
+                                </div>
                             ))}
                         </div>
                     </section>

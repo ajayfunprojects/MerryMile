@@ -99,6 +99,18 @@ You do this once. After that, every push to `main` redeploys automatically.
   - Each new plan costs roughly $0.10 to $0.20; identical requests within 24 hours reuse the
     result for free. Each person can make up to 30 new plans a day (`AI_DAILY_LIMIT`).
   - Every AI call is logged in the `ai_runs` table with its model, tokens and cost.
+- **Live flight status (Getting there tab).** Works with **AeroDataBox** or **AirLabs**; until a key is
+  set, the tab shows clearly labelled sample statuses. Add one of these in **Settings → Environment
+  variables** and deploy:
+  - `AERODATABOX_API_KEY`: from AeroDataBox on RapidAPI (the free Basic plan is enough to start). If you
+    bought it on API.market instead, also set `AERODATABOX_URL=https://prod.api.market/api/v1/aedbx/aerodatabox`
+    and `AERODATABOX_KEY_HEADER=x-magicapi-key`.
+  - or `AIRLABS_API_KEY`: from airlabs.co. AirLabs only knows a flight's current or next run, so days
+    ahead it shows the usual timetable and goes live on the day.
+  - With both keys set, `FLIGHT_STATUS_PROVIDER` (`aerodatabox` or `airlabs`) picks one.
+  - Flights are checked from 7 days before, each flight number and date once for everyone on it, reused
+    for 15 minutes, and at most `FLIGHT_STATUS_DAILY_LIMIT` (60) provider calls a day. Only the flight
+    number and date are sent. Every call is logged in the `flight_lookups` table.
 - **Ticket inbox domain.** Set `INBOUND_EMAIL_DOMAIN` (for example `in.merrymile.com`) once you
   own a domain.
 
@@ -121,7 +133,7 @@ npm run build        # or: npm run dev, alongside php artisan serve
 php artisan serve
 ```
 
-Tests (81 feature and unit tests covering every role's permissions, privacy rules, invites,
+Tests (88 feature and unit tests covering every role's permissions, privacy rules, invites,
 chat, exports, the AI planner and shared expenses):
 
 ```bash
@@ -143,6 +155,7 @@ database Laravel Cloud uses) when the code is hosted on GitHub; on GitLab it is 
 | AI planning (Claude) | `app/Services/Ai/` (planner prompt and schema in `TripPlanner.php`), `app/Jobs/PlanTripJob.php` |
 | New-trip wizard | `resources/js/pages/trips/create.tsx`, `resources/js/components/planner/` |
 | Shared expenses and settle up | `app/Support/Expenses.php` (math, in cents), `app/Http/Controllers/ExpenseController.php`, `resources/js/components/trip/expenses.tsx` |
+| Live flight status | `app/Services/Flights/` (AeroDataBox, AirLabs, samples), `resources/js/components/trip/flight-status.tsx` |
 | Encryption of sensitive fields | `app/Casts/SensitiveEncrypted.php` |
 | Database schema | `database/migrations/` |
 | Pages | `resources/js/pages/`; trip tabs in `resources/js/components/trip/` |
