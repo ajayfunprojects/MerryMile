@@ -100,7 +100,7 @@ function BigCard({ t }: { t: Trip }) {
     if (warns) att.push(['warn', plural(warns, 'warning'), go('tab=itinerary&filter=warn')]);
     if (t.pending.length) att.push(['dash', plural(t.pending.length, 'forwarded ticket') + ' to confirm', go('tab=travel')]);
     if (nofl) att.push(['dash', plural(nofl, 'arrival') + ' missing', go('tab=travel')]);
-    if (unb) att.push(['dash', plural(unb, 'stay') + ' not booked', go('tab=stays')]);
+    if (unb) att.push(['dash', plural(unb, 'stay') + ' not booked', go('tab=stays&filter=todo')]);
     const dayCls = (d: Day) => {
         const it = live(d);
         if (it.some((x) => x.warn)) return 'warn';

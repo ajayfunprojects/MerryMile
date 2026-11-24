@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { hotelOpts } from '../../lib/data';
-import { D, fd, money, nightsBetween } from '../../lib/util';
+import { addDays, D, fd, money, nightsBetween } from '../../lib/util';
 import type { Stay, Trip } from '../../types';
 import { act, Avs, Chip, Field, Modal, MoreMenu } from '../ui';
 
@@ -105,8 +105,8 @@ function StayEditor({ s, onClose }: { s: Stay; onClose: () => void }) {
 }
 
 /** One stay: a single summary line that opens to show rooms, cost and confirmation. */
-function StayCard({ t, s, onCompare }: { t: Trip; s: Stay; onCompare: () => void }) {
-    const [open, setOpen] = useState(false);
+function StayCard({ t, s, onCompare, startOpen = false }: { t: Trip; s: Stay; onCompare: () => void; startOpen?: boolean }) {
+    const [open, setOpen] = useState(startOpen);
     const [editing, setEditing] = useState(false);
     const tr = (id: string) => t.travelers.find((p) => String(p.id) === id);
     const nights = nightsBetween(s.from, s.to);
@@ -246,37 +246,95 @@ function StayCard({ t, s, onCompare }: { t: Trip; s: Stay; onCompare: () => void
     );
 }
 
+type StayFilter = 'all' | 'gaps' | 'todo' | 'nocost';
+
+/** Trip nights (by date) that no stay covers, grouped into runs: [first night, number of nights]. */
+function gapsOf(t: Trip): [string, number][] {
+    const runs: [string, number][] = [];
+    for (let i = 0; i < nightsBetween(t.start, t.end); i++) {
+        const night = addDays(t.start, i);
+        if (t.stays.some((x) => x.from <= night && night < x.to)) continue;
+        const last = runs[runs.length - 1];
+        if (last && addDays(last[0], last[1]) === night) last[1]++;
+        else runs.push([night, 1]);
+    }
+    return runs;
+}
+
 export function StaysTab({ trip: t }: { trip: Trip }) {
     const [compare, setCompare] = useState<{ city: string; stay: Stay | null } | null>(null);
     const [city, setCity] = useState('');
-    const tot = t.stays.reduce((n, x) => n + nightsBetween(x.from, x.to), 0);
+    // Links can open a filter, e.g. ?tab=stays&filter=todo from the dashboard.
+    const [flt, setFlt] = useState<StayFilter>(() => {
+        const q = new URLSearchParams(window.location.search).get('filter');
+        return q === 'gaps' || q === 'todo' || q === 'nocost' ? q : 'all';
+    });
+    const nights = nightsBetween(t.start, t.end);
+    const gaps = gapsOf(t);
+    const uncovered = gaps.reduce((n, g) => n + g[1], 0);
     const booked = t.stays.filter((x) => x.status === 'booked').length;
     const spent = t.stays.reduce((n, x) => n + (x.actual ?? 0), 0);
+    const noCost = t.stays.filter((x) => !x.hasActual);
+    const list = flt === 'todo' ? t.stays.filter((x) => x.status !== 'booked') : flt === 'nocost' ? noCost : flt === 'gaps' ? [] : t.stays;
+    const pick = (k: StayFilter) => setFlt(flt === k && k !== 'all' ? 'all' : k);
+    const note = {
+        all: '',
+        gaps: uncovered ? `Nights without a stay · ${uncovered} of ${nights}` : 'Every night has a stay.',
+        todo: `Stays still to book · ${list.length} of ${t.stays.length}`,
+        nocost: `Stays without an actual cost · ${list.length} of ${t.stays.length}`,
+    }[flt];
     return (
         <div className="stack">
-            <div className="stats">
-                <div className="stat">
+            <div className="stats" role="group" aria-label="Show stays">
+                <button type="button" className="stat statbtn" aria-pressed={flt === 'all'} onClick={() => pick('all')}>
                     <b>{t.stays.length}</b>
-                    <span>Stays</span>
-                </div>
-                <div className="stat">
-                    <b>{tot}</b>
-                    <span>Nights covered</span>
-                </div>
-                <div className="stat">
+                    <span>Stays · all</span>
+                </button>
+                <button type="button" className="stat statbtn" aria-pressed={flt === 'gaps'} onClick={() => pick('gaps')}>
+                    <b className={uncovered ? 'neg' : ''}>
+                        {nights - uncovered}/{nights}
+                    </b>
+                    <span>{uncovered ? 'Nights covered · see gaps' : 'Nights covered'}</span>
+                </button>
+                <button type="button" className="stat statbtn" aria-pressed={flt === 'todo'} disabled={!t.stays.length} onClick={() => pick('todo')}>
                     <b>
                         {booked}/{t.stays.length}
                     </b>
-                    <span>Booked</span>
-                </div>
-                <div className="stat">
+                    <span>{booked < t.stays.length ? 'Booked · see the rest' : 'Booked'}</span>
+                </button>
+                <button type="button" className="stat statbtn" aria-pressed={flt === 'nocost'} disabled={!t.can.money || !t.stays.length} onClick={() => pick('nocost')}>
                     <b>{t.can.money ? money(spent) || '$0' : 'Hidden'}</b>
-                    <span>Actual cost entered</span>
-                </div>
+                    <span>{t.can.money && noCost.length ? `Actual cost · ${noCost.length} to enter` : 'Actual cost entered'}</span>
+                </button>
             </div>
-            {t.stays.map((s) => (
-                <StayCard key={s.id} t={t} s={s} onCompare={() => setCompare({ city: s.city, stay: s })} />
+            {flt !== 'all' && (
+                <div className="row between sm">
+                    <span className="muted">{note}</span>
+                    <button type="button" className="linkish xs" onClick={() => setFlt('all')}>
+                        Show all
+                    </button>
+                </div>
+            )}
+            {flt === 'gaps' && gaps.length > 0 && (
+                <div className="card stack">
+                    {gaps.map(([first, n]) => (
+                        <div key={first} className="row between sm">
+                            <span>
+                                <b>{fd(first, { weekday: 'short', month: 'short', day: 'numeric' })}</b>
+                                {n > 1 ? ' to ' + fd(addDays(first, n), { weekday: 'short', month: 'short', day: 'numeric' }) : ''}
+                            </span>
+                            <span className="muted">
+                                {n} {n === 1 ? 'night' : 'nights'} without a stay
+                            </span>
+                        </div>
+                    ))}
+                    {t.can.edit && <p className="xs muted">Add a stay below to cover these nights.</p>}
+                </div>
+            )}
+            {list.map((s) => (
+                <StayCard key={s.id + flt} t={t} s={s} startOpen={flt === 'nocost'} onCompare={() => setCompare({ city: s.city, stay: s })} />
             ))}
+            {flt !== 'all' && flt !== 'gaps' && !list.length && <div className="card muted">Nothing here.</div>}
             {!t.stays.length && <div className="card muted">No stays yet.</div>}
             {t.can.edit && (
                 <div className="card row">
