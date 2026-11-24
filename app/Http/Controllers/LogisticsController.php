@@ -7,9 +7,11 @@ use App\Models\Leg;
 use App\Models\Stay;
 use App\Models\Traveler;
 use App\Models\Trip;
+use App\Services\Flights\FlightStatusService;
 use App\Support\TripAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class LogisticsController extends Controller
 {
@@ -26,19 +28,23 @@ class LogisticsController extends Controller
         return back()->with('toast', 'Deadline updated for everyone.');
     }
 
-    public function flights(Request $request, Trip $trip, Traveler $traveler): RedirectResponse
+    public function flights(Request $request, Trip $trip, Traveler $traveler, FlightStatusService $flights): RedirectResponse
     {
         $access = TripAccess::for($trip, $request->user());
         $tt = $trip->tripTravelers()->where('traveler_id', $traveler->id)->firstOrFail();
         abort_unless($access->canEditFlightsOf($traveler->id), 403);
 
+        // Flights may land up to a week before the trip or leave up to a week after it.
+        $window = ['sometimes', 'nullable', 'date', 'after_or_equal:'.$trip->start_date->copy()->subDays(7)->toDateString(), 'before_or_equal:'.$trip->end_date->copy()->addDays(7)->toDateString()];
         $data = $request->validate([
             'arrival_flight' => 'sometimes|nullable|string|max:20',
+            'arrival_date' => $window,
             'arrival_time' => array_merge(['sometimes'], self::TIME),
             'departure_flight' => 'sometimes|nullable|string|max:20',
+            'departure_date' => $window,
             'departure_time' => array_merge(['sometimes'], self::TIME),
             'deadline_override' => array_merge(['sometimes'], self::TIME),
-        ]);
+        ], ['arrival_date.*' => 'Pick an arrival date within a week of the trip.', 'departure_date.*' => 'Pick a departure date within a week of the trip.']);
         if (array_key_exists('deadline_override', $data)) {
             $access->abortUnless('admin');
             $data['arrival_deadline_override'] = $data['deadline_override'];
@@ -47,9 +53,35 @@ class LogisticsController extends Controller
 
             return back()->with('toast', 'Deadline updated for '.$traveler->firstName().'.');
         }
+        // Times come from the flight data provider; a typed time is only the fallback.
+        $missing = [];
+        foreach (['arrival' => $trip->start_date, 'departure' => $trip->end_date] as $role => $default) {
+            if (! array_key_exists($role.'_flight', $data)) {
+                continue;
+            }
+            $flight = FlightStatusService::normalize($data[$role.'_flight']);
+            if (! $flight) {
+                $data += [$role.'_date' => null, $role.'_time' => null];
+                if ($data[$role.'_flight']) {
+                    throw ValidationException::withMessages([$role.'_flight' => 'That does not look like a flight number. Try something like AI 879.']);
+                }
+
+                continue;
+            }
+            $date = $data[$role.'_date'] ?? $default->toDateString();
+            $data[$role.'_date'] = $date === $default->toDateString() ? null : $date;
+            if (empty($data[$role.'_time'])) {
+                $found = $flights->preview($flight, $date, $role)['result'] ?? null;
+                $time = $found ? substr((string) ($role === 'arrival' ? $found['to']['scheduled'] : $found['from']['scheduled']), 11, 5) : '';
+                $data[$role.'_time'] = $time ?: null;
+                if (! $time) {
+                    $missing[] = $flight;
+                }
+            }
+        }
         $tt->update($data);
 
-        return back()->with('toast', 'Flights saved.');
+        return back()->with('toast', $missing ? 'Flights saved. Add the time for '.implode(' and ', $missing).'; we could not look it up.' : 'Flights saved.');
     }
 
     public function addLeg(Request $request, Trip $trip): RedirectResponse

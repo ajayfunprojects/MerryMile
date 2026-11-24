@@ -3,13 +3,14 @@
 namespace App\Services\Flights;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 /**
  * AeroDataBox "flight status by number and date" (sold on RapidAPI and API.market).
  * GET /flights/number/{flight}/{date}?dateLocalRole=Arrival|Departure
  */
-class AeroDataBoxProvider implements FlightStatusProvider
+class AeroDataBoxProvider implements FlightStatusProvider, SearchesFlightNumbers
 {
     // AeroDataBox status → our state
     private const STATES = [
@@ -33,12 +34,7 @@ class AeroDataBoxProvider implements FlightStatusProvider
     {
         $url = rtrim($this->config['url'], '/')."/flights/number/{$flight}/{$date}";
         try {
-            $res = Http::timeout(12)->acceptJson()
-                ->withHeaders(array_filter([
-                    $this->config['key_header'] ?? 'X-RapidAPI-Key' => $this->config['key'],
-                    'X-RapidAPI-Host' => str_contains($this->config['url'], 'rapidapi') ? $this->config['host'] : null,
-                ]))
-                ->get($url, ['withAircraftImage' => 'false', 'withLocation' => 'false', 'dateLocalRole' => $role === 'arrival' ? 'Arrival' : 'Departure']);
+            $res = $this->request()->get($url, ['withAircraftImage' => 'false', 'withLocation' => 'false', 'dateLocalRole' => $role === 'arrival' ? 'Arrival' : 'Departure']);
         } catch (ConnectionException) {
             throw new FlightLookupException('Could not reach AeroDataBox.');
         }
@@ -62,6 +58,31 @@ class AeroDataBoxProvider implements FlightStatusProvider
         $leg = collect($legs)->first(fn ($l) => str_starts_with((string) FlightStatus::local(self::time($l[$side] ?? [], 'scheduled')), $date)) ?? $legs[0];
 
         return FlightStatus::make($flight, $date, $role, self::STATES[$leg['status'] ?? 'Unknown'] ?? 'unknown', self::place($leg['departure'] ?? []), self::place($leg['arrival'] ?? []) + ['baggage' => $leg['arrival']['baggageBelt'] ?? null], true, $leg['airline']['name'] ?? null);
+    }
+
+    /** GET /flights/search/term?q=AI87 → matching flight numbers. Unknown shapes give no suggestions. */
+    public function searchNumbers(string $term): array
+    {
+        try {
+            $res = $this->request()->get(rtrim($this->config['url'], '/').'/flights/search/term', ['q' => $term, 'limit' => 10]);
+        } catch (ConnectionException) {
+            throw new FlightLookupException('Could not reach AeroDataBox.');
+        }
+        if (! $res->successful()) {
+            throw new FlightLookupException('AeroDataBox search is not available right now.', $res->status());
+        }
+        $body = $res->json() ?? [];
+        $items = $body['items'] ?? $body;
+
+        return is_array($items) ? array_values(array_filter(array_map(fn ($i) => is_string($i) ? $i : ($i['number'] ?? $i['flightNumber'] ?? null), $items))) : [];
+    }
+
+    private function request(): PendingRequest
+    {
+        return Http::timeout(12)->acceptJson()->withHeaders(array_filter([
+            $this->config['key_header'] ?? 'X-RapidAPI-Key' => $this->config['key'],
+            'X-RapidAPI-Host' => str_contains($this->config['url'], 'rapidapi') ? $this->config['host'] : null,
+        ]));
     }
 
     private static function place(array $p): array

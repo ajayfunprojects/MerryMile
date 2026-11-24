@@ -2,6 +2,7 @@
 
 use App\Models\FlightLookup;
 use App\Models\Trip;
+use App\Models\User;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -167,4 +168,75 @@ it('shows labelled samples without a key and hides flight status from Viewers', 
 
     $this->actingAs($r['viewer'])->getJson("/trips/{$trip->id}/flight-status")->assertForbidden();
     $this->actingAs($r['outsider'])->getJson("/trips/{$trip->id}/flight-status")->assertForbidden();
+});
+
+// ---------- Entering flights: number and date only; the time is looked up ----------
+
+it('fills the landing time from the provider when a flight is saved', function () {
+    useProvider('aerodatabox');
+    $r = tripWithRoles();
+    $trip = flightTrip($r, []);
+    $sam = $r['adult']->selfTraveler->id;
+    $date = $trip->start_date->copy()->subDay()->toDateString(); // lands the day before
+    Http::fake(['*' => Http::response([adbLeg($date)])]);
+
+    $this->actingAs($r['adult'])->patch("/trips/{$trip->id}/travelers/{$sam}/flights", ['arrival_flight' => 'ai 879', 'arrival_date' => $date])
+        ->assertSessionHas('toast', 'Flights saved.');
+    $tt = $trip->tripTravelers()->where('traveler_id', $sam)->first();
+    expect($tt)->arrival_time->toBe('13:00')->arrival_date->toDateString()->toBe($date);
+    Http::assertSent(fn (Request $req) => str_contains($req->url(), "/flights/number/AI879/$date"));
+
+    // The trip's own first day is stored as "no date" so it follows the trip if its dates move.
+    $this->actingAs($r['adult'])->patch("/trips/{$trip->id}/travelers/{$sam}/flights", ['arrival_flight' => 'AI879', 'arrival_date' => $trip->start_date->toDateString()]);
+    expect($tt->fresh()->arrival_date)->toBeNull();
+});
+
+it('keeps a typed time when the flight cannot be looked up, and asks for one otherwise', function () {
+    useProvider('');
+    $r = tripWithRoles();
+    $trip = flightTrip($r, []);
+    $sam = $r['adult']->selfTraveler->id;
+    Http::fake();
+
+    $this->actingAs($r['adult'])->patch("/trips/{$trip->id}/travelers/{$sam}/flights", ['arrival_flight' => 'AI879'])
+        ->assertSessionHas('toast', fn ($t) => str_contains($t, 'Add the time for AI879'));
+    $this->actingAs($r['adult'])->patch("/trips/{$trip->id}/travelers/{$sam}/flights", ['arrival_flight' => 'AI879', 'arrival_time' => '12:40']);
+    expect($trip->tripTravelers()->where('traveler_id', $sam)->value('arrival_time'))->toBe('12:40');
+    Http::assertNothingSent();
+
+    $this->actingAs($r['adult'])->patch("/trips/{$trip->id}/travelers/{$sam}/flights", ['arrival_flight' => 'hello'])->assertSessionHasErrors('arrival_flight');
+    $this->actingAs($r['adult'])->patch("/trips/{$trip->id}/travelers/{$sam}/flights", ['arrival_flight' => 'AI879', 'arrival_date' => $trip->start_date->copy()->subDays(20)->toDateString()])->assertSessionHasErrors('arrival_date');
+});
+
+it('previews a flight on any date for travelers, never for Viewers', function () {
+    useProvider('aerodatabox');
+    $r = tripWithRoles();
+    $trip = flightTrip($r, []);
+    $far = now()->addDays(60)->toDateString(); // well past the 7-day live window
+    Http::fake(['*' => Http::response([adbLeg($far)])]);
+
+    $this->actingAs($r['adult'])->getJson("/trips/{$trip->id}/flights/preview?flight=AI%20879&date=$far&role=arrival")
+        ->assertJsonPath('result.to.scheduled', "$far 13:00")->assertJsonPath('result.from.airport', 'DEL');
+    $this->actingAs($r['viewer'])->getJson("/trips/{$trip->id}/flights/preview?flight=AI879&date=$far&role=arrival")->assertForbidden();
+    $this->actingAs($r['adult'])->getJson("/trips/{$trip->id}/flights/preview?flight=nope&date=$far&role=arrival")->assertJsonPath('result', null);
+});
+
+it('suggests airlines from the built-in list and flight numbers from AeroDataBox, cached and capped', function () {
+    useProvider('aerodatabox');
+    config(['merrymile.flights.search_daily_limit' => 2]);
+    $u = User::factory()->create();
+    Http::fake(['*/flights/search/term*' => Http::response(['items' => [['number' => 'AI 870'], ['number' => 'AI 879']]])]);
+
+    $this->actingAs($u)->getJson('/flights/search?q=air%20ind')->assertJsonPath('airlines.0.code', 'AI')->assertJsonPath('flights', []);
+    $this->actingAs($u)->getJson('/flights/search?q=AI87')->assertJsonPath('flights', ['AI870', 'AI879']);
+    $this->actingAs($u)->getJson('/flights/search?q=ai%2087'); // same search, from the cache
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $req) => $req['q'] === 'AI87');
+
+    $this->actingAs($u)->getJson('/flights/search?q=6E5'); // second provider search today
+    $this->actingAs($u)->getJson('/flights/search?q=UK7')->assertJsonPath('flights', []); // over the cap
+    Http::assertSentCount(2);
+
+    useProvider('airlabs'); // AirLabs cannot search flight numbers: airlines only
+    $this->actingAs($u)->getJson('/flights/search?q=BA28')->assertJsonPath('flights', [])->assertJsonPath('airlines.0.code', 'BA');
 });

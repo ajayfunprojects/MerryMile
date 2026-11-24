@@ -63,6 +63,8 @@ Route::middleware('auth')->group(function () {
     // Getting there, transfers, stays, tickets
     Route::patch('/trips/{trip}/deadline', [LogisticsController::class, 'deadline']);
     Route::get('/trips/{trip}/flight-status', [FlightStatusController::class, 'show'])->middleware('throttle:30,1');
+    Route::get('/trips/{trip}/flights/preview', [FlightStatusController::class, 'preview'])->middleware('throttle:30,1');
+    Route::get('/flights/search', [FlightStatusController::class, 'search'])->middleware('throttle:90,1');
     Route::patch('/trips/{trip}/travelers/{traveler}/flights', [LogisticsController::class, 'flights']);
     Route::post('/trips/{trip}/legs', [LogisticsController::class, 'addLeg']);
     Route::patch('/legs/{leg}/cost', [LogisticsController::class, 'legCost']);

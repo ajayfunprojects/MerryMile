@@ -55,5 +55,7 @@ return [
         'lookahead_days' => (int) env('FLIGHT_STATUS_LOOKAHEAD_DAYS', 7),
         // Most provider calls per day for the whole app, to stay inside the free tier.
         'daily_limit' => (int) env('FLIGHT_STATUS_DAILY_LIMIT', 60),
+        // Most flight-number searches (as people type) per day, separate from status checks.
+        'search_daily_limit' => (int) env('FLIGHT_SEARCH_DAILY_LIMIT', 40),
     ],
 ];

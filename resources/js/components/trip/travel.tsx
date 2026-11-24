@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { copy, D, fd, fmtT, mins, money } from '../../lib/util';
 import type { Trip, TripTraveler } from '../../types';
 import { act, Av, Chip, Field, useToast } from '../ui';
+import { FlightField, FlightValue } from './flight-input';
 import { flightKey, FlightLine, FlightStatusBar, liveTime, useFlightStatus } from './flight-status';
 
 const TIME_TICKS: [number, string][] = [
@@ -16,57 +17,42 @@ const pos = (m: number) => Math.max(0, Math.min(100, ((m - 300) / 960) * 100));
 
 function FlightEditor({ t, p }: { t: Trip; p: TripTraveler }) {
     const f = p.flights!;
-    const [v, setV] = useState({
-        arrival_flight: f.arr?.no || '',
-        arrival_time: f.arr?.time || '',
-        departure_flight: f.dep?.no || '',
-        departure_time: f.dep?.time || '',
+    const [arr, setArr] = useState<FlightValue>({ no: f.arr?.no || '', date: f.arr?.date || t.start, time: f.arr?.time || '' });
+    const [dep, setDep] = useState<FlightValue>({ no: f.dep?.no || '', date: f.dep?.date || t.end, time: f.dep?.time || '' });
+    const [needs, setNeeds] = useState({ arrival: false, departure: false });
+    const [open, setOpen] = useState(false); // build the fields only when opened, so closed editors look nothing up
+    // Send a typed time only when the flight could not be looked up; otherwise the server fills it in.
+    const body = (role: 'arrival' | 'departure', v: FlightValue) => ({
+        [role + '_flight']: v.no.trim() || null,
+        [role + '_date']: v.no.trim() ? v.date : null,
+        ...(needs[role] && v.time ? { [role + '_time']: v.time } : {}),
     });
     return (
-        <details className="ed">
+        <details className="ed" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
             <summary className="btn ghost sm">Edit {p.first}'s flights</summary>
-            <div className="card stack" style={{ boxShadow: 'none', gap: 14, marginTop: 4 }}>
-                <div className="fgrid">
-                    <Field id={'af-' + p.id} label="Arrival flight number">
-                        <input id={'af-' + p.id} placeholder="e.g. AI 879" value={v.arrival_flight} onChange={(e) => setV({ ...v, arrival_flight: e.target.value.toUpperCase() })} />
-                    </Field>
-                    <Field id={'at-' + p.id} label="Lands at (local time)">
-                        <input id={'at-' + p.id} type="time" value={v.arrival_time} onChange={(e) => setV({ ...v, arrival_time: e.target.value })} />
-                    </Field>
-                    <Field id={'df-' + p.id} label="Departure flight number">
-                        <input id={'df-' + p.id} placeholder="e.g. 6E 597" value={v.departure_flight} onChange={(e) => setV({ ...v, departure_flight: e.target.value.toUpperCase() })} />
-                    </Field>
-                    <Field id={'dt-' + p.id} label="Departs at (local time)">
-                        <input id={'dt-' + p.id} type="time" value={v.departure_time} onChange={(e) => setV({ ...v, departure_time: e.target.value })} />
-                    </Field>
+            {open && (
+                <div className="card stack" style={{ boxShadow: 'none', gap: 14, marginTop: 4 }}>
+                    <FlightField t={t} role="arrival" id={'af-' + p.id} value={arr} onChange={setArr} onNeedsTime={(n) => setNeeds((x) => ({ ...x, arrival: n }))} />
+                    <FlightField t={t} role="departure" id={'df-' + p.id} value={dep} onChange={setDep} onNeedsTime={(n) => setNeeds((x) => ({ ...x, departure: n }))} />
                     {t.can.admin && (
-                        <Field id={'dl-' + p.id} label={`${p.first}'s own first-day deadline (optional)`}>
-                            <input
-                                id={'dl-' + p.id}
-                                type="time"
-                                defaultValue={p.deadlineOverride || ''}
-                                onChange={(e) => act('patch', `/trips/${t.id}/travelers/${p.id}/flights`, { deadline_override: e.target.value || null })}
-                            />
-                        </Field>
+                        <div className="fgrid">
+                            <Field id={'dl-' + p.id} label={`${p.first}'s own first-day deadline (optional)`}>
+                                <input
+                                    id={'dl-' + p.id}
+                                    type="time"
+                                    defaultValue={p.deadlineOverride || ''}
+                                    onChange={(e) => act('patch', `/trips/${t.id}/travelers/${p.id}/flights`, { deadline_override: e.target.value || null })}
+                                />
+                            </Field>
+                        </div>
                     )}
+                    <div>
+                        <button type="button" className="btn sm" onClick={() => act('patch', `/trips/${t.id}/travelers/${p.id}/flights`, { ...body('arrival', arr), ...body('departure', dep) })}>
+                            Save flights
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <button
-                        type="button"
-                        className="btn sm"
-                        onClick={() =>
-                            act('patch', `/trips/${t.id}/travelers/${p.id}/flights`, {
-                                arrival_flight: v.arrival_flight || null,
-                                arrival_time: v.arrival_time || null,
-                                departure_flight: v.departure_flight || null,
-                                departure_time: v.departure_time || null,
-                            })
-                        }
-                    >
-                        Save flights
-                    </button>
-                </div>
-            </div>
+            )}
         </details>
     );
 }
@@ -115,7 +101,7 @@ export function TravelTab({ trip: t }: { trip: Trip }) {
     const fs = useFlightStatus(t);
     const live = (p: TripTraveler, role: 'arrival' | 'departure') => {
         const f = role === 'arrival' ? p.flights?.arr : p.flights?.dep;
-        return f?.no && fs.data ? fs.data.flights[flightKey(role, f.no, role === 'arrival' ? t.start : t.end)] : undefined;
+        return f?.no && fs.data ? fs.data.flights[flightKey(role, f.no, f.date || (role === 'arrival' ? t.start : t.end))] : undefined;
     };
     // The arrival time that counts: the live estimate when there is one, else what the traveler typed.
     const lands = (p: TripTraveler) => (fs.data && !fs.data.sample ? liveTime(live(p, 'arrival')) : null) ?? p.flights?.arr?.time ?? null;
@@ -123,6 +109,8 @@ export function TravelTab({ trip: t }: { trip: Trip }) {
         const f = p.flights;
         const at = lands(p);
         if (!f || !f.arr || !at) return null;
+        if (f.arr.date && f.arr.date < t.start) return ['Day early', 'ok'];
+        if (f.arr.date && f.arr.date > t.start) return ['Late', 'bad'];
         const dl = mins(p.deadlineOverride || t.deadline),
             l = mins(at);
         return l <= dl - 60 ? ['On time', 'ok'] : l <= dl ? ['Tight', 'warn'] : ['Late', 'bad'];
@@ -153,7 +141,10 @@ export function TravelTab({ trip: t }: { trip: Trip }) {
                         {f.arr ? (
                             <>
                                 <b>{f.arr.no}</b>
-                                <div className="xs muted">lands {fmtT(f.arr.time)}</div>
+                                <div className="xs muted">
+                                    {f.arr.time ? 'lands ' + fmtT(f.arr.time) : 'time not found yet'}
+                                    {f.arr.date && f.arr.date !== t.start ? ' · ' + fd(f.arr.date, { month: 'short', day: 'numeric' }) : ''}
+                                </div>
                                 <FlightLine e={live(p, 'arrival')} sample={!!fs.data?.sample} typed={f.arr.time} />
                             </>
                         ) : (

@@ -19,7 +19,8 @@ export interface SharedProps {
 
 export interface Flight {
     no: string;
-    time: string | null;
+    time: string | null; // local, from the flight data provider (or typed when it cannot be found)
+    date: string; // local date it lands (arrival) or leaves (departure)
 }
 
 export interface TripTraveler {

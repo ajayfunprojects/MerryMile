@@ -108,6 +108,11 @@ You do this once. After that, every push to `main` redeploys automatically.
   - or `AIRLABS_API_KEY`: from airlabs.co. AirLabs only knows a flight's current or next run, so days
     ahead it shows the usual timetable and goes live on the day.
   - With both keys set, `FLIGHT_STATUS_PROVIDER` (`aerodatabox` or `airlabs`) picks one.
+  - Travelers enter only the flight number and date; the time is filled in from the provider (a time
+    box appears only when a flight cannot be found, or before a key is set). Typing an airline name
+    suggests its code from a built-in list (OpenFlights airline data, Open Database License), and with
+    AeroDataBox, flight numbers are suggested as you type (at most `FLIGHT_SEARCH_DAILY_LIMIT`, 40, new
+    searches a day, each cached for a day).
   - Flights are checked from 7 days before, each flight number and date once for everyone on it, reused
     for 15 minutes, and at most `FLIGHT_STATUS_DAILY_LIMIT` (60) provider calls a day. Only the flight
     number and date are sent. Every call is logged in the `flight_lookups` table.
@@ -133,7 +138,7 @@ npm run build        # or: npm run dev, alongside php artisan serve
 php artisan serve
 ```
 
-Tests (88 feature and unit tests covering every role's permissions, privacy rules, invites,
+Tests (92 feature and unit tests covering every role's permissions, privacy rules, invites,
 chat, exports, the AI planner and shared expenses):
 
 ```bash

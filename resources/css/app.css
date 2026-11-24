@@ -311,3 +311,7 @@ h1,h2,h3,.logo span,.stat b,.dbadge b,.balamt b{font-family:var(--font-head);let
 .flightnote{margin-top:4px}
 .flightbar{padding:8px 12px;border-radius:12px;background:var(--raised);gap:8px}
 .deprow{padding:8px 0;border-top:1px solid var(--line)}.deprow:first-child{border-top:0;padding-top:0}
+/* Flight entry: number with live search, date, and a preview of the flight */
+.flightfield{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.flightpreview{padding:8px 12px;border-radius:12px;background:var(--raised)}
+.flightpreview.ok{background:var(--chip);color:var(--chip-ink)}

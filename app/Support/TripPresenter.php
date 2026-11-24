@@ -43,7 +43,7 @@ class TripPresenter
         $memberByUser = $trip->members->keyBy('user_id');
         $travelerUserIds = [];
 
-        $travelers = $trip->tripTravelers->sortBy('id')->values()->map(function ($tt) use ($personal, $memberByUser, $access, $self, &$travelerUserIds) {
+        $travelers = $trip->tripTravelers->sortBy('id')->values()->map(function ($tt) use ($trip, $personal, $memberByUser, $access, $self, &$travelerUserIds) {
             $t = $tt->traveler;
             $member = $t->linked_user_id ? $memberByUser->get($t->linked_user_id) : null;
             if ($member) {
@@ -73,8 +73,8 @@ class TripPresenter
                 'interests' => $t->interests ?? [],
                 'passportExpiry' => $t->passport_expiry?->toDateString(),
                 'flights' => [
-                    'arr' => $tt->arrival_flight ? ['no' => $tt->arrival_flight, 'time' => $tt->arrival_time] : null,
-                    'dep' => $tt->departure_flight ? ['no' => $tt->departure_flight, 'time' => $tt->departure_time] : null,
+                    'arr' => $tt->arrival_flight ? ['no' => $tt->arrival_flight, 'time' => $tt->arrival_time, 'date' => ($tt->arrival_date ?? $trip->start_date)->toDateString()] : null,
+                    'dep' => $tt->departure_flight ? ['no' => $tt->departure_flight, 'time' => $tt->departure_time, 'date' => ($tt->departure_date ?? $trip->end_date)->toDateString()] : null,
                 ],
                 'deadlineOverride' => $tt->arrival_deadline_override,
                 'canEditFlights' => $access->canEditFlightsOf($t->id),

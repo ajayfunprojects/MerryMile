@@ -9,6 +9,11 @@ class TripTraveler extends Model
 {
     protected $guarded = ['id'];
 
+    protected function casts(): array
+    {
+        return ['arrival_date' => 'date', 'departure_date' => 'date'];
+    }
+
     public function trip(): BelongsTo
     {
         return $this->belongsTo(Trip::class);
