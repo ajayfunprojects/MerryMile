@@ -31,6 +31,8 @@ Product spec: the "Travel Planner: Initial Dev Plan" doc. UI reference: the "Mer
   they are billed to) combine balances and settle through a lead adult. Expense rules are in
   `TripAccess` and tested in `ExpensesTest.php`.
 - Keep the prototype's look: reuse classes from `resources/css/app.css` rather than adding a CSS framework.
+  Fonts: Geist for text (`--font`) and Space Grotesk for headings and big numbers (`--font-head`),
+  both from Google Fonts in `resources/views/app.blade.php`.
 - In-app actions use the `act()` helper (`resources/js/components/ui.tsx`), which keeps scroll and
   tab state. Server messages come back as a `toast` flash.
 - Update the dev plan doc when a change affects the schema, a permission rule or an integration.

@@ -6,13 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $trip->name }} · Settle up</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Space+Grotesk:wght@500..700&display=swap">
     <style>
-        body{font:14px/1.5 Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#1D1A2B;max-width:820px;margin:32px auto;padding:0 20px}
-        h1{font-size:28px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 8px;border-bottom:2px solid #E6DECF;padding-bottom:4px}
+        body{font:14px/1.5 Geist,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#1D1A2B;max-width:820px;margin:32px auto;padding:0 20px}
+        h1,h2{font-family:'Space Grotesk',Geist,system-ui,sans-serif;letter-spacing:-.01em}h1{font-size:28px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 8px;border-bottom:2px solid #E6DECF;padding-bottom:4px}
         .muted{color:#625C70}
         table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:6px 8px;border-bottom:1px solid #E6DECF;font-size:13px}
         td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}.pos{color:#17794A;font-weight:700}.neg{color:#B3321F;font-weight:700}
         .bar{display:flex;gap:10px;margin:0 0 20px}.bar button{font:inherit;padding:8px 16px;border-radius:999px;border:1px solid #4F46E5;background:#4F46E5;color:#fff;cursor:pointer}
+        td,th{overflow-wrap:anywhere}@media (max-width:560px){body{margin:20px auto;padding:0 16px}td,th{padding:6px 4px;font-size:12px}}
         @media print{.bar{display:none}body{margin:0}}
     </style>
 </head>

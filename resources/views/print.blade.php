@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $trip->name }} · Itinerary</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Space+Grotesk:wght@500..700&display=swap">
     <style>
-        body{font:14px/1.5 Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#1D1A2B;max-width:820px;margin:32px auto;padding:0 20px}
-        h1{font-size:28px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 8px;border-bottom:2px solid #E6DECF;padding-bottom:4px}
+        body{font:14px/1.5 Geist,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#1D1A2B;max-width:820px;margin:32px auto;padding:0 20px}
+        h1,h2{font-family:'Space Grotesk',Geist,system-ui,sans-serif;letter-spacing:-.01em}h1{font-size:28px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 8px;border-bottom:2px solid #E6DECF;padding-bottom:4px}
         .muted{color:#625C70}.day{margin:14px 0;page-break-inside:avoid}.day h3{margin:0;font-size:15px}
         ul{margin:6px 0 0 18px;padding:0}li{margin:2px 0}.tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#17794A}
         .warn{background:#FFF0C7;color:#4A3800;padding:2px 8px;border-radius:6px;font-size:12px}
         table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:6px 8px;border-bottom:1px solid #E6DECF;font-size:13px}
         .bar{display:flex;gap:10px;margin:0 0 20px}.bar button{font:inherit;padding:8px 16px;border-radius:999px;border:1px solid #4F46E5;background:#4F46E5;color:#fff;cursor:pointer}
+        td,th{overflow-wrap:anywhere}@media (max-width:560px){body{margin:20px auto;padding:0 16px}td,th{padding:6px 4px;font-size:12px}}
         @media print{.bar{display:none}body{margin:0}}
     </style>
 </head>
