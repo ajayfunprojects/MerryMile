@@ -315,3 +315,5 @@ h1,h2,h3,.logo span,.stat b,.dbadge b,.balamt b{font-family:var(--font-head);let
 .flightfield{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .flightpreview{padding:8px 12px;border-radius:12px;background:var(--raised)}
 .flightpreview.ok{background:var(--chip);color:var(--chip-ink)}
+/* Visas and passport on each traveler's card */
+.visarow{display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px dashed var(--line)}

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ADDON_LABEL, copy, ROLE_LABEL } from '../../lib/util';
 import type { Addon, RosterEntry, Trip } from '../../types';
 import { act, Av, Chip, MoreMenu, ToggleChip, useToast } from '../ui';
+import { VisaNote, VisaRow } from './visas';
 
 const ROLES = ['trip_admin', 'planner', 'adult_traveler', 'viewer'];
 const ADDONS: Addon[] = ['treasurer', 'guardian'];
@@ -224,8 +225,10 @@ export function TravelersTab({ trip: t }: { trip: Trip }) {
                             ))}
                         </div>
                     )}
+                    {!v && <VisaRow t={t} p={p} />}
                 </div>
             ))}
+            {!v && t.travelers.length > 0 && <VisaNote t={t} />}
             {t.otherMembers.map((m) => (
                 <div key={m.id} className="card stack">
                     <div className="chead">

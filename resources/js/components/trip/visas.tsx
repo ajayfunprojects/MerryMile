@@ -1,67 +1,61 @@
 import { VISA_US } from '../../lib/data';
 import { D, fd, isoOf } from '../../lib/util';
-import type { Trip } from '../../types';
+import type { Trip, TripTraveler } from '../../types';
+import { COUNTRIES } from '../pickers';
 import { Chip } from '../ui';
 
-export function VisasTab({ trip: t }: { trip: Trip }) {
-    if (!t.can.personal) return <div className="card muted sm">Visa and passport details are visible to travelers on this trip, not to viewers.</div>;
+/** Destination countries on the trip, e.g. ["India"] from "India: Assam", "India: Meghalaya". */
+export const tripCountries = (t: Trip) => [...new Set(t.dests.map((d) => d.split(':')[0].trim()))];
+
+/** Passports should be valid six months past the end of the trip. */
+export const passportNeededUntil = (t: Trip) => {
     const lim = D(t.end);
     lim.setMonth(lim.getMonth() + 6);
-    const limI = isoOf(lim);
-    const cs = [...new Set(t.dests.map((d) => d.split(':')[0]))];
+    return isoOf(lim);
+};
+
+/**
+ * One traveler's entry needs for each destination country, plus passport validity, shown on their
+ * card on the Travelers tab. Entry rules are samples until the Passport Index dataset is connected.
+ */
+export function VisaRow({ t, p }: { t: Trip; p: TripTraveler }) {
+    const home = COUNTRIES.find(([code]) => code === p.nat)?.[1];
+    const until = passportNeededUntil(t);
+    const rule = (country: string) => (home && home === country ? 'Citizen' : p.nat === 'US' ? VISA_US[country] || 'Check' : 'Check');
     return (
-        <div className="stack">
-            <div className="card stack scroll">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Traveler</th>
-                            {cs.map((c) => (
-                                <th key={c}>{c}</th>
-                            ))}
-                            <th>Passport validity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {t.travelers.map((p) => (
-                            <tr key={p.id}>
-                                <td>
-                                    <b>{p.name}</b>
-                                    <div className="xs muted">{p.nat || '—'} passport</div>
-                                </td>
-                                {cs.map((c) => {
-                                    const v = p.nat === 'US' ? VISA_US[c] || 'Check' : 'Check';
-                                    return (
-                                        <td key={c}>
-                                            <Chip cls={v === 'e-Visa' ? 'warn' : v === 'Check' ? 'dash' : 'ok'}>{v}</Chip>
-                                        </td>
-                                    );
-                                })}
-                                <td>
-                                    {p.passportExpiry ? (
-                                        p.passportExpiry >= limI ? (
-                                            <Chip cls="ok">Valid to {fd(p.passportExpiry, { month: 'short', year: 'numeric' })}</Chip>
-                                        ) : (
-                                            <Chip cls="bad">Renew first</Chip>
-                                        )
-                                    ) : (
-                                        <Chip cls="dash">Add expiry</Chip>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+        <div className="visarow">
+            <span className="xs muted">Visas and passport</span>
+            <div className="wrap">
+                {tripCountries(t).map((c) => {
+                    const v = rule(c);
+                    return (
+                        <Chip key={c} cls={v === 'e-Visa' ? 'warn' : v === 'Check' ? 'dash' : 'ok'}>
+                            {c}: {v === 'Check' ? 'check entry rules' : v}
+                        </Chip>
+                    );
+                })}
+                {p.passportExpiry ? (
+                    p.passportExpiry >= until ? (
+                        <Chip cls="ok">Passport valid to {fd(p.passportExpiry, { month: 'short', year: 'numeric' })}</Chip>
+                    ) : (
+                        <Chip cls="bad">Passport: renew before the trip</Chip>
+                    )
+                ) : (
+                    <Chip cls="dash">Passport expiry not added</Chip>
+                )}
             </div>
-            <div className="card stack">
-                <div className="note">
-                    <span>
-                        Entry rules are sample rows standing in for the Passport Index dataset. Permits, fees and processing times will come from official government sites in a later release. Passports should be valid six months past{' '}
-                        {fd(t.end, { month: 'short', day: 'numeric', year: 'numeric' })}.
-                    </span>
-                </div>
-                <div className="warnbox">Verify before you book. Rules change.</div>
-            </div>
+        </div>
+    );
+}
+
+/** The footnote under the Travelers tab: where the rules come from and the six-month rule. */
+export function VisaNote({ t }: { t: Trip }) {
+    return (
+        <div className="note">
+            <span>
+                Visa rules shown are samples standing in for the Passport Index dataset; check official government sites before you book. Passports should be valid six months past{' '}
+                {fd(t.end, { month: 'short', day: 'numeric', year: 'numeric' })}.
+            </span>
         </div>
     );
 }

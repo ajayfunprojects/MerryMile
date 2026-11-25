@@ -10,11 +10,14 @@ import { StaysTab } from '../../components/trip/stays';
 import { TodayTab } from '../../components/trip/today';
 import { TravelTab } from '../../components/trip/travel';
 import { TravelersTab } from '../../components/trip/travelers';
-import { VisasTab } from '../../components/trip/visas';
 import type { Trip } from '../../types';
 
 export default function ShowTrip({ trip, tab: initialTab }: { trip: Trip; tab: string }) {
-    const [tab, setTabState] = useState(tripTabs(trip).some(([k]) => k === initialTab) ? initialTab : 'itinerary');
+    const [tab, setTabState] = useState(() => {
+        // Visas now live on each traveler's card, so old links to the Visas tab open Travelers.
+        const want = initialTab === 'visas' ? 'travelers' : initialTab;
+        return tripTabs(trip).some(([k]) => k === want) ? want : 'itinerary';
+    });
     const setTab = (k: string) => {
         setTabState(k);
         const url = new URL(window.location.href);
@@ -43,7 +46,6 @@ export default function ShowTrip({ trip, tab: initialTab }: { trip: Trip; tab: s
         travel: <TravelTab trip={trip} />,
         stays: <StaysTab trip={trip} />,
         expenses: trip.money ? <ExpensesTab trip={trip} /> : null,
-        visas: <VisasTab trip={trip} />,
         chat: <ChatTab trip={trip} goTab={setTab} />,
         travelers: <TravelersTab trip={trip} />,
         today: <TodayTab trip={trip} goTab={setTab} />,

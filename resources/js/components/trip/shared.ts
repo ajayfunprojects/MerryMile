@@ -25,7 +25,6 @@ export const TABS: [string, string][] = [
     ['travel', 'Getting there'],
     ['stays', 'Stays'],
     ['expenses', 'Expenses'],
-    ['visas', 'Visas'],
     ['chat', 'Chat'],
     ['travelers', 'Travelers'],
     ['today', 'Today'],

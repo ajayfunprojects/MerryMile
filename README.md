@@ -6,8 +6,8 @@ Merrymile is a group trip planner for friends and family. It is the Laravel vers
 *Merrymile Planner* prototype, built to the *Travel Planner: Initial Dev Plan*.
 
 - **Trips:** a 5-step wizard (dates, destinations, interests, travelers), a dashboard with
-  "Next up", and a trip page with tabs for Itinerary, Getting there, Stays, Visas, Chat,
-  Travelers and Today.
+  "Next up", and a trip page with tabs for Itinerary, Getting there, Stays, Expenses, Chat,
+  Travelers (with each person's visa and passport check) and Today (during the trip).
 - **Real accounts and roles:** Trip Admin, Planner, Adult Traveler and Viewer, plus the
   Treasurer and Guardian add-ons. Every person signs in as themselves; the prototype's
   "Viewing as" switcher is gone.
